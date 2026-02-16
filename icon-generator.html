@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Icon Generator - Cardmarket Foto Manager</title>
+    <style>
+        body { font-family: system-ui; padding: 20px; background: #1a1a2e; color: white; }
+        .icon-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 20px; }
+        .icon-item { text-align: center; }
+        canvas { border-radius: 20%; background: #0d0d1a; }
+        a { color: #ffd700; display: block; margin-top: 10px; }
+    </style>
+</head>
+<body>
+    <h1>📷 Cardmarket Icon Generator</h1>
+    <p>Click each icon to download it as PNG</p>
+    <div class="icon-grid" id="iconGrid"></div>
+
+    <script>
+        const sizes = [72, 96, 128, 144, 152, 192, 384, 512];
+
+        function drawIcon(ctx, size) {
+            const scale = size / 512;
+            
+            // Background gradient
+            const bgGrad = ctx.createLinearGradient(0, 0, size, size);
+            bgGrad.addColorStop(0, '#1a1a35');
+            bgGrad.addColorStop(1, '#0d0d1a');
+            
+            // Accent gradient
+            const accentGrad = ctx.createLinearGradient(0, 0, size, size);
+            accentGrad.addColorStop(0, '#ffd700');
+            accentGrad.addColorStop(1, '#ff6b35');
+            
+            // Draw rounded rectangle background
+            ctx.beginPath();
+            const r = 100 * scale;
+            ctx.roundRect(0, 0, size, size, r);
+            ctx.fillStyle = bgGrad;
+            ctx.fill();
+            
+            // Camera body
+            ctx.beginPath();
+            ctx.roundRect(100 * scale, 180 * scale, 312 * scale, 220 * scale, 30 * scale);
+            ctx.fillStyle = accentGrad;
+            ctx.fill();
+            
+            // Camera flash
+            ctx.beginPath();
+            ctx.roundRect(140 * scale, 140 * scale, 80 * scale, 50 * scale, 10 * scale);
+            ctx.fillStyle = accentGrad;
+            ctx.fill();
+            
+            // Camera lens outer
+            ctx.beginPath();
+            ctx.arc(256 * scale, 290 * scale, 85 * scale, 0, Math.PI * 2);
+            ctx.fillStyle = '#0d0d1a';
+            ctx.fill();
+            
+            // Camera lens middle
+            ctx.beginPath();
+            ctx.arc(256 * scale, 290 * scale, 65 * scale, 0, Math.PI * 2);
+            ctx.fillStyle = '#1a1a35';
+            ctx.fill();
+            
+            // Camera lens inner
+            ctx.beginPath();
+            ctx.arc(256 * scale, 290 * scale, 45 * scale, 0, Math.PI * 2);
+            ctx.fillStyle = accentGrad;
+            ctx.globalAlpha = 0.8;
+            ctx.fill();
+            ctx.globalAlpha = 1;
+            
+            // Camera lens reflection
+            ctx.beginPath();
+            ctx.arc(240 * scale, 275 * scale, 15 * scale, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(255,255,255,0.4)';
+            ctx.fill();
+            
+            // Shutter button
+            ctx.beginPath();
+            ctx.arc(380 * scale, 160 * scale, 20 * scale, 0, Math.PI * 2);
+            ctx.fillStyle = accentGrad;
+            ctx.fill();
+            
+            // Card icon (bottom right)
+            ctx.save();
+            ctx.translate(340 * scale, 320 * scale);
+            
+            // Card outer
+            ctx.beginPath();
+            ctx.roundRect(0, 0, 100 * scale, 70 * scale, 8 * scale);
+            ctx.fillStyle = '#ffffff';
+            ctx.fill();
+            
+            // Card inner
+            ctx.beginPath();
+            ctx.roundRect(10 * scale, 10 * scale, 80 * scale, 50 * scale, 4 * scale);
+            ctx.fillStyle = accentGrad;
+            ctx.fill();
+            
+            // Card circle
+            ctx.beginPath();
+            ctx.arc(50 * scale, 35 * scale, 15 * scale, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(255,255,255,0.6)';
+            ctx.fill();
+            
+            ctx.restore();
+        }
+
+        const grid = document.getElementById('iconGrid');
+
+        sizes.forEach(size => {
+            const container = document.createElement('div');
+            container.className = 'icon-item';
+            
+            const canvas = document.createElement('canvas');
+            canvas.width = size;
+            canvas.height = size;
+            canvas.style.width = Math.min(size, 150) + 'px';
+            canvas.style.height = Math.min(size, 150) + 'px';
+            
+            const ctx = canvas.getContext('2d');
+            drawIcon(ctx, size);
+            
+            const link = document.createElement('a');
+            link.href = canvas.toDataURL('image/png');
+            link.download = `icon-${size}.png`;
+            link.textContent = `Download ${size}x${size}`;
+            
+            container.appendChild(canvas);
+            container.appendChild(link);
+            grid.appendChild(container);
+        });
+
+        // Also create and download all automatically
+        console.log('Icons generated! Click to download.');
+    </script>
+</body>
+</html>

@@ -1,0 +1,1966 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#1a1a2e">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Cardmarket">
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="icons/icon-192.png">
+    <title>Cardmarket Foto Manager</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #0d0d1a;
+            --bg-secondary: #141428;
+            --bg-card: #1a1a35;
+            --bg-elevated: #222245;
+            --accent-primary: #ffd700;
+            --accent-secondary: #ff6b35;
+            --accent-gradient: linear-gradient(135deg, #ffd700 0%, #ff6b35 100%);
+            --text-primary: #ffffff;
+            --text-secondary: #a0a0c0;
+            --text-muted: #606080;
+            --border-color: #2a2a50;
+            --success: #00d68f;
+            --danger: #ff4757;
+            --warning: #ffa502;
+            --shadow-sm: 0 2px 8px rgba(0,0,0,0.3);
+            --shadow-md: 0 4px 20px rgba(0,0,0,0.4);
+            --shadow-lg: 0 8px 40px rgba(0,0,0,0.5);
+            --radius-sm: 8px;
+            --radius-md: 12px;
+            --radius-lg: 20px;
+            --radius-xl: 28px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        html, body {
+            height: 100%;
+            overflow: hidden;
+        }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.5;
+        }
+
+        /* Scrollbar styling */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: var(--bg-secondary);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: var(--border-color);
+            border-radius: 3px;
+        }
+
+        /* App Container */
+        .app {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            max-width: 100%;
+            overflow: hidden;
+        }
+
+        /* Header */
+        .header {
+            background: var(--bg-secondary);
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border-color);
+            flex-shrink: 0;
+        }
+
+        .header-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .logo-icon {
+            width: 36px;
+            height: 36px;
+            background: var(--accent-gradient);
+            border-radius: var(--radius-sm);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+        }
+
+        .logo-text {
+            font-family: 'Space Mono', monospace;
+            font-weight: 700;
+            font-size: 16px;
+            background: var(--accent-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border-color);
+            background: var(--bg-card);
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 18px;
+            transition: all 0.2s;
+        }
+
+        .btn-icon:active {
+            transform: scale(0.95);
+            background: var(--bg-elevated);
+        }
+
+        .btn-icon.syncing {
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        /* Stats Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+        }
+
+        .stat-card {
+            background: var(--bg-card);
+            border-radius: var(--radius-sm);
+            padding: 10px;
+            text-align: center;
+            border: 1px solid var(--border-color);
+        }
+
+        .stat-value {
+            font-family: 'Space Mono', monospace;
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--accent-primary);
+        }
+
+        .stat-label {
+            font-size: 10px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-top: 2px;
+        }
+
+        /* Main Content */
+        .main-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px;
+            padding-bottom: 100px;
+        }
+
+        /* Section Headers */
+        .section-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+
+        .section-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .badge {
+            background: var(--accent-gradient);
+            color: var(--bg-primary);
+            font-size: 11px;
+            font-weight: 700;
+            padding: 4px 10px;
+            border-radius: 20px;
+        }
+
+        /* Task Cards */
+        .task-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .task-card {
+            background: var(--bg-card);
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border-color);
+            overflow: hidden;
+            transition: all 0.2s;
+        }
+
+        .task-card:active {
+            transform: scale(0.98);
+        }
+
+        .task-card.completed {
+            opacity: 0.6;
+        }
+
+        .task-card.completed .task-title {
+            text-decoration: line-through;
+        }
+
+        .task-header {
+            padding: 14px 16px;
+            cursor: pointer;
+        }
+
+        .task-top {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 8px;
+        }
+
+        .task-title {
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--text-primary);
+            line-height: 1.3;
+        }
+
+        .task-date {
+            font-size: 11px;
+            color: var(--text-muted);
+            white-space: nowrap;
+            font-family: 'Space Mono', monospace;
+        }
+
+        .task-username {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 12px;
+            color: var(--accent-primary);
+            margin-bottom: 8px;
+        }
+
+        .task-description {
+            font-size: 13px;
+            color: var(--text-secondary);
+            background: var(--bg-secondary);
+            padding: 10px 12px;
+            border-radius: var(--radius-sm);
+            border-left: 3px solid var(--accent-secondary);
+            word-break: break-word;
+        }
+
+        .task-meta {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-top: 10px;
+        }
+
+        .task-photo-count {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        .task-photo-count.has-photos {
+            color: var(--success);
+        }
+
+        .task-status {
+            font-size: 11px;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-weight: 600;
+        }
+
+        .task-status.todo {
+            background: rgba(255, 107, 53, 0.2);
+            color: var(--accent-secondary);
+        }
+
+        .task-status.done {
+            background: rgba(0, 214, 143, 0.2);
+            color: var(--success);
+        }
+
+        /* Task Actions */
+        .task-actions {
+            display: none;
+            padding: 12px 16px;
+            background: var(--bg-secondary);
+            border-top: 1px solid var(--border-color);
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .task-card.expanded .task-actions {
+            display: flex;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            padding: 10px 16px;
+            border-radius: var(--radius-sm);
+            border: none;
+            font-size: 13px;
+            font-weight: 500;
+            font-family: 'Outfit', sans-serif;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn:active {
+            transform: scale(0.95);
+        }
+
+        .btn-primary {
+            background: var(--accent-gradient);
+            color: var(--bg-primary);
+        }
+
+        .btn-secondary {
+            background: var(--bg-elevated);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+        }
+
+        .btn-success {
+            background: var(--success);
+            color: var(--bg-primary);
+        }
+
+        .btn-danger {
+            background: var(--danger);
+            color: white;
+        }
+
+        .btn-small {
+            padding: 8px 12px;
+            font-size: 12px;
+        }
+
+        /* Photo Grid */
+        .photo-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            padding: 12px 16px;
+            background: var(--bg-secondary);
+        }
+
+        .photo-item {
+            position: relative;
+            aspect-ratio: 1;
+            border-radius: var(--radius-sm);
+            overflow: hidden;
+            background: var(--bg-card);
+        }
+
+        .photo-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .photo-number {
+            position: absolute;
+            top: 4px;
+            left: 4px;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            font-size: 10px;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Space Mono', monospace;
+        }
+
+        .photo-delete {
+            position: absolute;
+            top: 4px;
+            right: 4px;
+            width: 24px;
+            height: 24px;
+            background: var(--danger);
+            border: none;
+            border-radius: 50%;
+            color: white;
+            font-size: 14px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Camera View */
+        .camera-overlay {
+            position: fixed;
+            inset: 0;
+            background: var(--bg-primary);
+            z-index: 1000;
+            display: none;
+            flex-direction: column;
+        }
+
+        .camera-overlay.active {
+            display: flex;
+        }
+
+        .camera-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px;
+            background: var(--bg-secondary);
+        }
+
+        .camera-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-secondary);
+        }
+
+        .camera-preview {
+            flex: 1;
+            position: relative;
+            background: black;
+            overflow: hidden;
+        }
+
+        .camera-preview video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .camera-crosshair {
+            position: absolute;
+            inset: 20%;
+            border: 2px dashed rgba(255,215,0,0.5);
+            border-radius: var(--radius-md);
+            pointer-events: none;
+        }
+
+        .camera-controls {
+            padding: 20px;
+            background: var(--bg-secondary);
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+        }
+
+        .btn-capture {
+            width: 72px;
+            height: 72px;
+            border-radius: 50%;
+            background: var(--accent-gradient);
+            border: 4px solid white;
+            cursor: pointer;
+            transition: transform 0.1s;
+        }
+
+        .btn-capture:active {
+            transform: scale(0.9);
+        }
+
+        .camera-photos {
+            padding: 12px;
+            background: var(--bg-card);
+            display: flex;
+            gap: 8px;
+            overflow-x: auto;
+        }
+
+        .camera-thumb {
+            width: 60px;
+            height: 60px;
+            flex-shrink: 0;
+            border-radius: var(--radius-sm);
+            overflow: hidden;
+            border: 2px solid var(--accent-primary);
+        }
+
+        .camera-thumb img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        /* Modal */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.8);
+            z-index: 2000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal {
+            background: var(--bg-card);
+            border-radius: var(--radius-lg);
+            width: 100%;
+            max-width: 400px;
+            max-height: 90vh;
+            overflow-y: auto;
+            border: 1px solid var(--border-color);
+        }
+
+        .modal-header {
+            padding: 20px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .modal-title {
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .modal-close {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            border: none;
+            background: var(--bg-elevated);
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 18px;
+        }
+
+        .modal-body {
+            padding: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+
+        .form-input, .form-textarea {
+            width: 100%;
+            padding: 12px;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border-color);
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            font-size: 14px;
+            font-family: 'Outfit', sans-serif;
+        }
+
+        .form-input:focus, .form-textarea:focus {
+            outline: none;
+            border-color: var(--accent-primary);
+        }
+
+        .form-textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+
+        .modal-footer {
+            padding: 16px 20px;
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+
+        /* Bottom Navigation */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: var(--bg-secondary);
+            border-top: 1px solid var(--border-color);
+            padding: 12px 20px;
+            padding-bottom: max(12px, env(safe-area-inset-bottom));
+            display: flex;
+            justify-content: space-around;
+            gap: 10px;
+            z-index: 100;
+        }
+
+        .nav-btn {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            padding: 8px;
+            border: none;
+            background: transparent;
+            color: var(--text-muted);
+            cursor: pointer;
+            border-radius: var(--radius-sm);
+            transition: all 0.2s;
+        }
+
+        .nav-btn:active {
+            background: var(--bg-card);
+        }
+
+        .nav-btn.active {
+            color: var(--accent-primary);
+        }
+
+        .nav-btn-icon {
+            font-size: 22px;
+        }
+
+        .nav-btn-label {
+            font-size: 10px;
+            font-weight: 500;
+        }
+
+        /* Login Screen */
+        .login-screen {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 40px 20px;
+            text-align: center;
+        }
+
+        .login-logo {
+            width: 80px;
+            height: 80px;
+            background: var(--accent-gradient);
+            border-radius: var(--radius-lg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 40px;
+            margin-bottom: 24px;
+        }
+
+        .login-title {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            background: var(--accent-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .login-subtitle {
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin-bottom: 40px;
+            max-width: 280px;
+        }
+
+        .btn-google {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 14px 28px;
+            background: white;
+            color: #333;
+            border-radius: var(--radius-md);
+            font-size: 15px;
+            font-weight: 500;
+            border: none;
+            cursor: pointer;
+            box-shadow: var(--shadow-md);
+        }
+
+        .btn-google:active {
+            transform: scale(0.98);
+        }
+
+        .btn-google svg {
+            width: 20px;
+            height: 20px;
+        }
+
+        .login-skip {
+            margin-top: 20px;
+            color: var(--text-muted);
+            font-size: 13px;
+            text-decoration: underline;
+            cursor: pointer;
+            background: none;
+            border: none;
+        }
+
+        /* Toast Notifications */
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            right: 20px;
+            z-index: 3000;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            pointer-events: none;
+        }
+
+        .toast {
+            background: var(--bg-elevated);
+            color: var(--text-primary);
+            padding: 14px 18px;
+            border-radius: var(--radius-sm);
+            border-left: 4px solid var(--accent-primary);
+            box-shadow: var(--shadow-lg);
+            animation: slideIn 0.3s ease;
+            pointer-events: auto;
+        }
+
+        .toast.success {
+            border-color: var(--success);
+        }
+
+        .toast.error {
+            border-color: var(--danger);
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+        }
+
+        .empty-icon {
+            font-size: 60px;
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
+
+        .empty-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: var(--text-secondary);
+        }
+
+        .empty-text {
+            font-size: 14px;
+            color: var(--text-muted);
+        }
+
+        /* Filter Tabs */
+        .filter-tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+            overflow-x: auto;
+            padding-bottom: 4px;
+        }
+
+        .filter-tab {
+            padding: 8px 16px;
+            border-radius: 20px;
+            border: 1px solid var(--border-color);
+            background: var(--bg-card);
+            color: var(--text-secondary);
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: all 0.2s;
+        }
+
+        .filter-tab:active {
+            transform: scale(0.95);
+        }
+
+        .filter-tab.active {
+            background: var(--accent-gradient);
+            color: var(--bg-primary);
+            border-color: transparent;
+        }
+
+        /* Search Box */
+        .search-box {
+            position: relative;
+            margin-bottom: 16px;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 12px 16px 12px 44px;
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border-color);
+            background: var(--bg-card);
+            color: var(--text-primary);
+            font-size: 14px;
+            font-family: 'Outfit', sans-serif;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: var(--accent-primary);
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+            font-size: 18px;
+        }
+
+        /* Loading Spinner */
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid var(--border-color);
+            border-top-color: var(--accent-primary);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+    </style>
+</head>
+<body>
+    <!-- Toast Container -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- Login Screen -->
+    <div class="login-screen" id="loginScreen">
+        <div class="login-logo">📷</div>
+        <h1 class="login-title">Cardmarket Foto Manager</h1>
+        <p class="login-subtitle">Beheer je foto-verzoeken van Cardmarket kopers snel en efficiënt</p>
+        <button class="btn-google" id="btnGoogleLogin">
+            <svg viewBox="0 0 24 24">
+                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+            </svg>
+            Login met Google
+        </button>
+        <button class="login-skip" id="btnSkipLogin">Overslaan (offline modus)</button>
+    </div>
+
+    <!-- Main App -->
+    <div class="app" id="mainApp" style="display: none;">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-top">
+                <div class="logo">
+                    <div class="logo-icon">📷</div>
+                    <span class="logo-text">CARDMARKET</span>
+                </div>
+                <div class="header-actions">
+                    <button class="btn-icon" id="btnSync" title="Sync Gmail">🔄</button>
+                    <button class="btn-icon" id="btnAddManual" title="Handmatig toevoegen">➕</button>
+                    <button class="btn-icon" id="btnSettings" title="Instellingen">⚙️</button>
+                </div>
+            </div>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-value" id="statTotal">0</div>
+                    <div class="stat-label">Totaal</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="statTodo">0</div>
+                    <div class="stat-label">Te Doen</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="statWithPhotos">0</div>
+                    <div class="stat-label">Met Foto</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="statPhotos">0</div>
+                    <div class="stat-label">Foto's</div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content" id="mainContent">
+            <div class="search-box">
+                <span class="search-icon">🔍</span>
+                <input type="text" class="search-input" id="searchInput" placeholder="Zoek in taken...">
+            </div>
+
+            <div class="filter-tabs">
+                <button class="filter-tab active" data-filter="all">Alle</button>
+                <button class="filter-tab" data-filter="todo">Te Doen</button>
+                <button class="filter-tab" data-filter="photos">Met Foto's</button>
+                <button class="filter-tab" data-filter="done">Voltooid</button>
+            </div>
+
+            <div class="task-list" id="taskList">
+                <!-- Tasks will be rendered here -->
+            </div>
+        </main>
+
+        <!-- Bottom Navigation -->
+        <nav class="bottom-nav">
+            <button class="nav-btn active" data-view="tasks">
+                <span class="nav-btn-icon">📋</span>
+                <span class="nav-btn-label">Taken</span>
+            </button>
+            <button class="nav-btn" data-view="camera">
+                <span class="nav-btn-icon">📸</span>
+                <span class="nav-btn-label">Camera</span>
+            </button>
+            <button class="nav-btn" data-view="settings">
+                <span class="nav-btn-icon">⚙️</span>
+                <span class="nav-btn-label">Settings</span>
+            </button>
+        </nav>
+    </div>
+
+    <!-- Camera Overlay -->
+    <div class="camera-overlay" id="cameraOverlay">
+        <div class="camera-header">
+            <span class="camera-title" id="cameraTitle">Foto's maken</span>
+            <button class="btn-icon" id="btnCloseCamera">✕</button>
+        </div>
+        <div class="camera-preview">
+            <video id="cameraVideo" autoplay playsinline></video>
+            <div class="camera-crosshair"></div>
+        </div>
+        <div class="camera-photos" id="cameraPhotos">
+            <!-- Photo thumbnails will appear here -->
+        </div>
+        <div class="camera-controls">
+            <button class="btn-capture" id="btnCapture"></button>
+        </div>
+    </div>
+
+    <!-- Add Task Modal -->
+    <div class="modal-overlay" id="addTaskModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 class="modal-title">Taak Toevoegen</h2>
+                <button class="modal-close" id="btnCloseAddModal">✕</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Titel / Kaartnaam</label>
+                    <input type="text" class="form-input" id="inputTitle" placeholder="bijv. Pikachu VMAX">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Username</label>
+                    <input type="text" class="form-input" id="inputUsername" placeholder="Cardmarket username">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Email Adres</label>
+                    <input type="email" class="form-input" id="inputEmail" placeholder="msg-xxx@cardmarket.com">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Bericht</label>
+                    <textarea class="form-textarea" id="inputDescription" placeholder="Het volledige bericht van de koper..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="btnCancelAdd">Annuleren</button>
+                <button class="btn btn-primary" id="btnSaveTask">Opslaan</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div class="modal-overlay" id="settingsModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 class="modal-title">Instellingen</h2>
+                <button class="modal-close" id="btnCloseSettings">✕</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Gmail Status</label>
+                    <p id="gmailStatus" style="color: var(--text-secondary); font-size: 14px;">Niet verbonden</p>
+                </div>
+                <div class="form-group">
+                    <button class="btn btn-secondary" id="btnLogoutGoogle" style="width: 100%;">
+                        Uitloggen van Google
+                    </button>
+                </div>
+                <hr style="border-color: var(--border-color); margin: 20px 0;">
+                <div class="form-group">
+                    <label class="form-label">Data Beheer</label>
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                        <button class="btn btn-secondary btn-small" id="btnExportData">📥 Export</button>
+                        <button class="btn btn-secondary btn-small" id="btnImportData">📤 Import</button>
+                        <button class="btn btn-danger btn-small" id="btnClearData">🗑️ Wis Alles</button>
+                    </div>
+                    <input type="file" id="importFile" accept=".json" style="display: none;">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Canvas for photo capture -->
+    <canvas id="photoCanvas" style="display: none;"></canvas>
+
+    <script>
+        // =====================================================
+        // CARDMARKET FOTO MANAGER - MAIN APPLICATION
+        // =====================================================
+
+        // Google OAuth Configuration
+        // USER MUST REPLACE THIS WITH THEIR OWN CLIENT ID
+        const GOOGLE_CLIENT_ID = '798382176554-foctga75o3ru9pjnfqv6jtjr0t7kig6v.apps.googleusercontent.com';
+        const GMAIL_SCOPES = 'https://www.googleapis.com/auth/gmail.readonly';
+
+        // IndexedDB Configuration
+        const DB_NAME = 'CardmarketPhotoDB';
+        const DB_VERSION = 1;
+        const STORE_TASKS = 'tasks';
+        const STORE_CONFIG = 'config';
+
+        // Application State
+        let db = null;
+        let tasks = [];
+        let currentFilter = 'all';
+        let currentTaskId = null;
+        let cameraStream = null;
+        let sessionPhotos = [];
+        let googleAccessToken = null;
+
+        // =====================================================
+        // DATABASE FUNCTIONS
+        // =====================================================
+
+        async function initDB() {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open(DB_NAME, DB_VERSION);
+
+                request.onerror = () => reject(request.error);
+
+                request.onsuccess = () => {
+                    db = request.result;
+                    resolve(db);
+                };
+
+                request.onupgradeneeded = (event) => {
+                    const database = event.target.result;
+
+                    if (!database.objectStoreNames.contains(STORE_TASKS)) {
+                        const taskStore = database.createObjectStore(STORE_TASKS, { keyPath: 'id' });
+                        taskStore.createIndex('gmailMessageId', 'gmailMessageId', { unique: false });
+                        taskStore.createIndex('completed', 'completed', { unique: false });
+                        taskStore.createIndex('date', 'date', { unique: false });
+                    }
+
+                    if (!database.objectStoreNames.contains(STORE_CONFIG)) {
+                        database.createObjectStore(STORE_CONFIG, { keyPath: 'key' });
+                    }
+                };
+            });
+        }
+
+        async function getAllTasks() {
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction([STORE_TASKS], 'readonly');
+                const store = transaction.objectStore(STORE_TASKS);
+                const request = store.getAll();
+
+                request.onsuccess = () => {
+                    tasks = request.result.sort((a, b) => b.id - a.id);
+                    resolve(tasks);
+                };
+                request.onerror = () => reject(request.error);
+            });
+        }
+
+        async function saveTask(task) {
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction([STORE_TASKS], 'readwrite');
+                const store = transaction.objectStore(STORE_TASKS);
+                const request = store.put(task);
+
+                request.onsuccess = () => resolve();
+                request.onerror = () => reject(request.error);
+            });
+        }
+
+        async function deleteTask(taskId) {
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction([STORE_TASKS], 'readwrite');
+                const store = transaction.objectStore(STORE_TASKS);
+                const request = store.delete(taskId);
+
+                request.onsuccess = () => resolve();
+                request.onerror = () => reject(request.error);
+            });
+        }
+
+        async function getConfig(key) {
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction([STORE_CONFIG], 'readonly');
+                const store = transaction.objectStore(STORE_CONFIG);
+                const request = store.get(key);
+
+                request.onsuccess = () => resolve(request.result?.value);
+                request.onerror = () => reject(request.error);
+            });
+        }
+
+        async function setConfig(key, value) {
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction([STORE_CONFIG], 'readwrite');
+                const store = transaction.objectStore(STORE_CONFIG);
+                const request = store.put({ key, value });
+
+                request.onsuccess = () => resolve();
+                request.onerror = () => reject(request.error);
+            });
+        }
+
+        async function checkMessageExists(gmailMessageId) {
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction([STORE_TASKS], 'readonly');
+                const store = transaction.objectStore(STORE_TASKS);
+                const index = store.index('gmailMessageId');
+                const request = index.get(gmailMessageId);
+
+                request.onsuccess = () => resolve(!!request.result);
+                request.onerror = () => reject(request.error);
+            });
+        }
+
+        // =====================================================
+        // UI FUNCTIONS
+        // =====================================================
+
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.textContent = message;
+            container.appendChild(toast);
+
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateY(-20px)';
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        function updateStats() {
+            const total = tasks.length;
+            const todo = tasks.filter(t => !t.completed).length;
+            const withPhotos = tasks.filter(t => t.photos && t.photos.length > 0).length;
+            const totalPhotos = tasks.reduce((sum, t) => sum + (t.photos?.length || 0), 0);
+
+            document.getElementById('statTotal').textContent = total;
+            document.getElementById('statTodo').textContent = todo;
+            document.getElementById('statWithPhotos').textContent = withPhotos;
+            document.getElementById('statPhotos').textContent = totalPhotos;
+        }
+
+        function formatDate(timestamp) {
+            const date = new Date(timestamp);
+            const options = { day: 'numeric', month: 'short' };
+            return date.toLocaleDateString('nl-NL', options);
+        }
+
+        function renderTasks() {
+            const container = document.getElementById('taskList');
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+
+            let filteredTasks = tasks;
+
+            // Apply filter
+            if (currentFilter === 'todo') {
+                filteredTasks = filteredTasks.filter(t => !t.completed);
+            } else if (currentFilter === 'photos') {
+                filteredTasks = filteredTasks.filter(t => t.photos && t.photos.length > 0);
+            } else if (currentFilter === 'done') {
+                filteredTasks = filteredTasks.filter(t => t.completed);
+            }
+
+            // Apply search
+            if (searchTerm) {
+                filteredTasks = filteredTasks.filter(t =>
+                    t.title.toLowerCase().includes(searchTerm) ||
+                    t.username.toLowerCase().includes(searchTerm) ||
+                    t.description.toLowerCase().includes(searchTerm)
+                );
+            }
+
+            if (filteredTasks.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">📭</div>
+                        <h3 class="empty-title">Geen taken gevonden</h3>
+                        <p class="empty-text">Sync met Gmail of voeg handmatig een taak toe</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = filteredTasks.map(task => `
+                <div class="task-card ${task.completed ? 'completed' : ''}" data-id="${task.id}">
+                    <div class="task-header" onclick="toggleTaskExpand(${task.id})">
+                        <div class="task-top">
+                            <h3 class="task-title">${escapeHtml(task.title)}</h3>
+                            <span class="task-date">${formatDate(task.id)}</span>
+                        </div>
+                        <div class="task-username">👤 ${escapeHtml(task.username)}</div>
+                        <div class="task-description">${escapeHtml(task.description)}</div>
+                        <div class="task-meta">
+                            <span class="task-photo-count ${task.photos?.length ? 'has-photos' : ''}">
+                                📷 ${task.photos?.length || 0} foto's
+                            </span>
+                            <span class="task-status ${task.completed ? 'done' : 'todo'}">
+                                ${task.completed ? '✓ Klaar' : '○ Te Doen'}
+                            </span>
+                        </div>
+                    </div>
+                    ${task.photos?.length ? `
+                        <div class="photo-grid">
+                            ${task.photos.map((photo, idx) => `
+                                <div class="photo-item">
+                                    <img src="${photo.data}" alt="Foto ${idx + 1}">
+                                    <span class="photo-number">#${idx + 1}</span>
+                                    <button class="photo-delete" onclick="event.stopPropagation(); deletePhoto(${task.id}, ${idx})">✕</button>
+                                </div>
+                            `).join('')}
+                        </div>
+                    ` : ''}
+                    <div class="task-actions">
+                        <button class="btn btn-primary btn-small" onclick="openCamera(${task.id})">📸 Foto</button>
+                        ${task.photos?.length ? `
+                            <button class="btn btn-secondary btn-small" onclick="downloadAllPhotos(${task.id})">💾 Download Alle</button>
+                        ` : ''}
+                        <button class="btn btn-secondary btn-small" onclick="composeEmail(${task.id})">✉️ Email</button>
+                        <button class="btn ${task.completed ? 'btn-secondary' : 'btn-success'} btn-small" onclick="toggleComplete(${task.id})">
+                            ${task.completed ? '↩️ Open' : '✓ Klaar'}
+                        </button>
+                        <button class="btn btn-danger btn-small" onclick="confirmDeleteTask(${task.id})">🗑️</button>
+                    </div>
+                </div>
+            `).join('');
+
+            updateStats();
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function toggleTaskExpand(taskId) {
+            const card = document.querySelector(`.task-card[data-id="${taskId}"]`);
+            const wasExpanded = card.classList.contains('expanded');
+
+            // Close all other cards
+            document.querySelectorAll('.task-card.expanded').forEach(c => c.classList.remove('expanded'));
+
+            // Toggle current card
+            if (!wasExpanded) {
+                card.classList.add('expanded');
+            }
+        }
+
+        // =====================================================
+        // TASK MANAGEMENT
+        // =====================================================
+
+        async function toggleComplete(taskId) {
+            const task = tasks.find(t => t.id === taskId);
+            if (task) {
+                task.completed = !task.completed;
+                await saveTask(task);
+                await getAllTasks();
+                renderTasks();
+                showToast(task.completed ? 'Taak voltooid!' : 'Taak heropend', 'success');
+            }
+        }
+
+        async function confirmDeleteTask(taskId) {
+            if (confirm('Weet je zeker dat je deze taak wilt verwijderen?')) {
+                await deleteTask(taskId);
+                await getAllTasks();
+                renderTasks();
+                showToast('Taak verwijderd', 'success');
+            }
+        }
+
+        async function deletePhoto(taskId, photoIndex) {
+            const task = tasks.find(t => t.id === taskId);
+            if (task && task.photos) {
+                task.photos.splice(photoIndex, 1);
+                await saveTask(task);
+                await getAllTasks();
+                renderTasks();
+                showToast('Foto verwijderd', 'success');
+            }
+        }
+
+        function downloadAllPhotos(taskId) {
+            const task = tasks.find(t => t.id === taskId);
+            if (task && task.photos) {
+                task.photos.forEach((photo, idx) => {
+                    const link = document.createElement('a');
+                    link.href = photo.data;
+                    link.download = `${task.username}_foto_${idx + 1}.jpg`;
+                    link.click();
+                });
+                showToast(`${task.photos.length} foto's gedownload`, 'success');
+            }
+        }
+
+        function composeEmail(taskId) {
+            const task = tasks.find(t => t.id === taskId);
+            if (task) {
+                const photoCount = task.photos?.length || 0;
+                const subject = encodeURIComponent('Re: Photo request');
+                const body = encodeURIComponent(
+                    `Hi ${task.username},\n\n` +
+                    `Here ${photoCount === 1 ? 'is the photo' : 'are the photos'} you requested.\n\n` +
+                    `Best regards`
+                );
+                const gmailUrl = `https://mail.google.com/mail/?view=cm&to=${task.email}&su=${subject}&body=${body}`;
+
+                showToast('Download eerst alle foto\'s en voeg ze toe als bijlage', 'info');
+                setTimeout(() => {
+                    window.open(gmailUrl, '_blank');
+                }, 1500);
+            }
+        }
+
+        // =====================================================
+        // CAMERA FUNCTIONS
+        // =====================================================
+
+        async function openCamera(taskId) {
+            currentTaskId = taskId;
+            sessionPhotos = [];
+
+            const task = tasks.find(t => t.id === taskId);
+            document.getElementById('cameraTitle').textContent = `Foto's voor ${task?.username || 'taak'}`;
+            document.getElementById('cameraPhotos').innerHTML = '';
+
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: {
+                        facingMode: 'environment',
+                        width: { ideal: 1920 },
+                        height: { ideal: 1080 }
+                    }
+                });
+
+                cameraStream = stream;
+                document.getElementById('cameraVideo').srcObject = stream;
+                document.getElementById('cameraOverlay').classList.add('active');
+            } catch (error) {
+                console.error('Camera error:', error);
+                showToast('Kon camera niet openen. Controleer permissies.', 'error');
+            }
+        }
+
+        function closeCamera() {
+            if (cameraStream) {
+                cameraStream.getTracks().forEach(track => track.stop());
+                cameraStream = null;
+            }
+            document.getElementById('cameraOverlay').classList.remove('active');
+            document.getElementById('cameraVideo').srcObject = null;
+
+            // Save photos to task if any were taken
+            if (sessionPhotos.length > 0 && currentTaskId) {
+                saveSessionPhotos();
+            }
+
+            currentTaskId = null;
+            sessionPhotos = [];
+        }
+
+        function capturePhoto() {
+            const video = document.getElementById('cameraVideo');
+            const canvas = document.getElementById('photoCanvas');
+            const ctx = canvas.getContext('2d');
+
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            ctx.drawImage(video, 0, 0);
+
+            const photoData = canvas.toDataURL('image/jpeg', 0.9);
+            sessionPhotos.push({
+                data: photoData,
+                timestamp: new Date().toISOString()
+            });
+
+            // Show thumbnail
+            const thumbsContainer = document.getElementById('cameraPhotos');
+            const thumb = document.createElement('div');
+            thumb.className = 'camera-thumb';
+            thumb.innerHTML = `<img src="${photoData}" alt="Foto ${sessionPhotos.length}">`;
+            thumbsContainer.appendChild(thumb);
+
+            // Visual feedback
+            document.getElementById('cameraOverlay').style.backgroundColor = 'white';
+            setTimeout(() => {
+                document.getElementById('cameraOverlay').style.backgroundColor = '';
+            }, 100);
+
+            showToast(`Foto ${sessionPhotos.length} gemaakt!`, 'success');
+        }
+
+        async function saveSessionPhotos() {
+            const task = tasks.find(t => t.id === currentTaskId);
+            if (task) {
+                if (!task.photos) task.photos = [];
+                task.photos.push(...sessionPhotos);
+                await saveTask(task);
+                await getAllTasks();
+                renderTasks();
+                showToast(`${sessionPhotos.length} foto's opgeslagen!`, 'success');
+            }
+        }
+
+        // =====================================================
+        // GMAIL INTEGRATION
+        // =====================================================
+
+        function loadGoogleAPI() {
+            return new Promise((resolve) => {
+                if (window.google?.accounts) {
+                    resolve();
+                    return;
+                }
+
+                const script = document.createElement('script');
+                script.src = 'https://accounts.google.com/gsi/client';
+                script.onload = resolve;
+                document.head.appendChild(script);
+            });
+        }
+
+        async function initGoogleAuth() {
+            await loadGoogleAPI();
+
+            // Check for saved token
+            const savedToken = await getConfig('googleAccessToken');
+            if (savedToken) {
+                googleAccessToken = savedToken;
+                updateGmailStatus(true);
+            }
+        }
+
+        function googleLogin() {
+            if (GOOGLE_CLIENT_ID === 'YOUR_CLIENT_ID_HERE.apps.googleusercontent.com') {
+                showToast('Configureer eerst je Google Client ID!', 'error');
+                return;
+            }
+
+            const client = google.accounts.oauth2.initTokenClient({
+                client_id: GOOGLE_CLIENT_ID,
+                scope: GMAIL_SCOPES,
+                callback: async (response) => {
+                    if (response.access_token) {
+                        googleAccessToken = response.access_token;
+                        await setConfig('googleAccessToken', googleAccessToken);
+                        updateGmailStatus(true);
+                        showApp();
+                        showToast('Succesvol ingelogd!', 'success');
+                    }
+                }
+            });
+
+            client.requestAccessToken();
+        }
+
+        function googleLogout() {
+            googleAccessToken = null;
+            setConfig('googleAccessToken', null);
+            updateGmailStatus(false);
+            showToast('Uitgelogd van Google', 'success');
+        }
+
+        function updateGmailStatus(connected) {
+            const statusEl = document.getElementById('gmailStatus');
+            if (connected) {
+                statusEl.innerHTML = '<span style="color: var(--success);">✓ Verbonden met Gmail</span>';
+            } else {
+                statusEl.textContent = 'Niet verbonden';
+            }
+        }
+
+        async function syncGmail() {
+            if (!googleAccessToken) {
+                showToast('Log eerst in met Google', 'error');
+                return;
+            }
+
+            const syncBtn = document.getElementById('btnSync');
+            syncBtn.classList.add('syncing');
+
+            try {
+                // Search for Cardmarket emails
+                const searchQuery = 'subject:"Cardmarket message from" after:2026/02/01';
+                const searchUrl = `https://www.googleapis.com/gmail/v1/users/me/messages?q=${encodeURIComponent(searchQuery)}&maxResults=50`;
+
+                const searchResponse = await fetch(searchUrl, {
+                    headers: { 'Authorization': `Bearer ${googleAccessToken}` }
+                });
+
+                if (!searchResponse.ok) {
+                    if (searchResponse.status === 401) {
+                        googleLogout();
+                        throw new Error('Token verlopen, log opnieuw in');
+                    }
+                    throw new Error('Gmail API fout');
+                }
+
+                const searchData = await searchResponse.json();
+                const messages = searchData.messages || [];
+
+                let newTasks = 0;
+
+                for (const msg of messages) {
+                    // Check if already exists
+                    const exists = await checkMessageExists(msg.id);
+                    if (exists) continue;
+
+                    // Fetch full message
+                    const msgUrl = `https://www.googleapis.com/gmail/v1/users/me/messages/${msg.id}?format=full`;
+                    const msgResponse = await fetch(msgUrl, {
+                        headers: { 'Authorization': `Bearer ${googleAccessToken}` }
+                    });
+
+                    if (!msgResponse.ok) continue;
+
+                    const msgData = await msgResponse.json();
+                    const parsed = parseEmail(msgData);
+
+                    if (parsed) {
+                        await saveTask(parsed);
+                        newTasks++;
+                    }
+                }
+
+                await getAllTasks();
+                renderTasks();
+
+                if (newTasks > 0) {
+                    showToast(`${newTasks} nieuwe taken gevonden!`, 'success');
+                } else {
+                    showToast('Geen nieuwe foto-verzoeken', 'info');
+                }
+
+            } catch (error) {
+                console.error('Sync error:', error);
+                showToast(error.message || 'Sync mislukt', 'error');
+            } finally {
+                syncBtn.classList.remove('syncing');
+            }
+        }
+
+        function parseEmail(gmailMessage) {
+            try {
+                const headers = gmailMessage.payload.headers;
+                const subject = headers.find(h => h.name === 'Subject')?.value || '';
+                const from = headers.find(h => h.name === 'From')?.value || '';
+
+                // Extract username from subject
+                const usernameMatch = subject.match(/Cardmarket message from (.+)/i);
+                const username = usernameMatch ? usernameMatch[1].trim() : 'Unknown';
+
+                // Extract email address
+                const emailMatch = from.match(/<(.+@cardmarket\.com)>/) || from.match(/(.+@cardmarket\.com)/);
+                const email = emailMatch ? emailMatch[1] : from;
+
+                // Get email body
+                let body = '';
+                const payload = gmailMessage.payload;
+
+                if (payload.body?.data) {
+                    body = atob(payload.body.data.replace(/-/g, '+').replace(/_/g, '/'));
+                } else if (payload.parts) {
+                    const textPart = payload.parts.find(p => p.mimeType === 'text/plain');
+                    if (textPart?.body?.data) {
+                        body = atob(textPart.body.data.replace(/-/g, '+').replace(/_/g, '/'));
+                    }
+                }
+
+                // Extract the actual message from buyer
+                const buyerMessage = extractBuyerMessage(body);
+
+                // Check if it's a photo request
+                const photoKeywords = ['photo', 'foto', 'picture', 'image', 'pic', 'can i ask', 'could i ask', 'condition', 'front', 'back', 'photo of', 'photos of', 'picture of'];
+                const isPhotoRequest = photoKeywords.some(kw => buyerMessage.toLowerCase().includes(kw));
+
+                if (!isPhotoRequest) {
+                    return null; // Not a photo request
+                }
+
+                // Try to detect card name
+                const cardName = detectCardName(buyerMessage);
+                const title = cardName ? `Foto van ${cardName} voor ${username}` : `Foto verzoek van ${username}`;
+
+                return {
+                    id: Date.now(),
+                    title,
+                    username,
+                    email,
+                    description: buyerMessage,
+                    date: new Date().toISOString(),
+                    completed: false,
+                    photos: [],
+                    gmailMessageId: gmailMessage.id
+                };
+
+            } catch (error) {
+                console.error('Parse error:', error);
+                return null;
+            }
+        }
+
+        function extractBuyerMessage(body) {
+            // Remove headers and footers
+            let message = body;
+
+            // Find the actual message between the header and footer
+            const headerEnd = message.indexOf('to Strepto1:');
+            if (headerEnd > -1) {
+                message = message.substring(headerEnd + 12);
+            }
+
+            // Remove footer
+            const footerPatterns = [
+                /Please reply above this line.*/is,
+                /—+[\s\S]*/,
+                /Best regards[\s\S]*/i,
+                /With kind regards[\s\S]*/i,
+                /Cardmarket Team[\s\S]*/i
+            ];
+
+            footerPatterns.forEach(pattern => {
+                message = message.replace(pattern, '');
+            });
+
+            return message.trim();
+        }
+
+        function detectCardName(text) {
+            const patterns = [
+                /photo(?:s)?\s+(?:of\s+)?(?:the\s+)?(.+?)(?:\?|$)/i,
+                /picture(?:s)?\s+(?:of\s+)?(?:the\s+)?(.+?)(?:\?|$)/i,
+                /image(?:s)?\s+(?:of\s+)?(?:the\s+)?(.+?)(?:\?|$)/i,
+                /condition\s+(?:of\s+)?(?:the\s+)?(.+?)(?:\?|$)/i,
+                /interested\s+in\s+(?:the\s+)?(.+?)(?:\?|,|$)/i
+            ];
+
+            for (const pattern of patterns) {
+                const match = text.match(pattern);
+                if (match && match[1]) {
+                    let cardName = match[1].trim();
+                    // Clean up
+                    cardName = cardName.replace(/please|thank|thanks|you/gi, '').trim();
+                    if (cardName.length > 3 && cardName.length < 100) {
+                        return cardName;
+                    }
+                }
+            }
+
+            return null;
+        }
+
+        // =====================================================
+        // MODALS & NAVIGATION
+        // =====================================================
+
+        function showLogin() {
+            document.getElementById('loginScreen').style.display = 'flex';
+            document.getElementById('mainApp').style.display = 'none';
+        }
+
+        function showApp() {
+            document.getElementById('loginScreen').style.display = 'none';
+            document.getElementById('mainApp').style.display = 'flex';
+        }
+
+        function openAddTaskModal() {
+            document.getElementById('addTaskModal').classList.add('active');
+            document.getElementById('inputTitle').value = '';
+            document.getElementById('inputUsername').value = '';
+            document.getElementById('inputEmail').value = '';
+            document.getElementById('inputDescription').value = '';
+        }
+
+        function closeAddTaskModal() {
+            document.getElementById('addTaskModal').classList.remove('active');
+        }
+
+        function openSettingsModal() {
+            document.getElementById('settingsModal').classList.add('active');
+        }
+
+        function closeSettingsModal() {
+            document.getElementById('settingsModal').classList.remove('active');
+        }
+
+        async function saveManualTask() {
+            const title = document.getElementById('inputTitle').value.trim();
+            const username = document.getElementById('inputUsername').value.trim();
+            const email = document.getElementById('inputEmail').value.trim();
+            const description = document.getElementById('inputDescription').value.trim();
+
+            if (!title || !username) {
+                showToast('Vul titel en username in', 'error');
+                return;
+            }
+
+            const task = {
+                id: Date.now(),
+                title,
+                username,
+                email: email || 'handmatig@toegevoegd',
+                description: description || 'Handmatig toegevoegd',
+                date: new Date().toISOString(),
+                completed: false,
+                photos: [],
+                gmailMessageId: null
+            };
+
+            await saveTask(task);
+            await getAllTasks();
+            renderTasks();
+            closeAddTaskModal();
+            showToast('Taak toegevoegd!', 'success');
+        }
+
+        // =====================================================
+        // EXPORT / IMPORT
+        // =====================================================
+
+        function exportData() {
+            const data = {
+                tasks,
+                exportDate: new Date().toISOString(),
+                version: 1
+            };
+
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `cardmarket-backup-${new Date().toISOString().split('T')[0]}.json`;
+            link.click();
+            URL.revokeObjectURL(url);
+
+            showToast('Data geëxporteerd!', 'success');
+        }
+
+        function importData() {
+            document.getElementById('importFile').click();
+        }
+
+        async function handleImport(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            try {
+                const text = await file.text();
+                const data = JSON.parse(text);
+
+                if (!data.tasks || !Array.isArray(data.tasks)) {
+                    throw new Error('Ongeldig bestand');
+                }
+
+                for (const task of data.tasks) {
+                    await saveTask(task);
+                }
+
+                await getAllTasks();
+                renderTasks();
+                showToast(`${data.tasks.length} taken geïmporteerd!`, 'success');
+
+            } catch (error) {
+                console.error('Import error:', error);
+                showToast('Import mislukt: ' + error.message, 'error');
+            }
+
+            event.target.value = '';
+        }
+
+        async function clearAllData() {
+            if (confirm('Weet je zeker dat je ALLE data wilt verwijderen? Dit kan niet ongedaan worden.')) {
+                const transaction = db.transaction([STORE_TASKS], 'readwrite');
+                const store = transaction.objectStore(STORE_TASKS);
+                store.clear();
+
+                tasks = [];
+                renderTasks();
+                closeSettingsModal();
+                showToast('Alle data gewist', 'success');
+            }
+        }
+
+        // =====================================================
+        // EVENT LISTENERS
+        // =====================================================
+
+        function setupEventListeners() {
+            // Login
+            document.getElementById('btnGoogleLogin').addEventListener('click', googleLogin);
+            document.getElementById('btnSkipLogin').addEventListener('click', () => {
+                showApp();
+                showToast('Offline modus - Gmail sync niet beschikbaar', 'info');
+            });
+
+            // Header actions
+            document.getElementById('btnSync').addEventListener('click', syncGmail);
+            document.getElementById('btnAddManual').addEventListener('click', openAddTaskModal);
+            document.getElementById('btnSettings').addEventListener('click', openSettingsModal);
+
+            // Filter tabs
+            document.querySelectorAll('.filter-tab').forEach(tab => {
+                tab.addEventListener('click', () => {
+                    document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
+                    tab.classList.add('active');
+                    currentFilter = tab.dataset.filter;
+                    renderTasks();
+                });
+            });
+
+            // Search
+            document.getElementById('searchInput').addEventListener('input', renderTasks);
+
+            // Camera
+            document.getElementById('btnCloseCamera').addEventListener('click', closeCamera);
+            document.getElementById('btnCapture').addEventListener('click', capturePhoto);
+
+            // Add Task Modal
+            document.getElementById('btnCloseAddModal').addEventListener('click', closeAddTaskModal);
+            document.getElementById('btnCancelAdd').addEventListener('click', closeAddTaskModal);
+            document.getElementById('btnSaveTask').addEventListener('click', saveManualTask);
+
+            // Settings Modal
+            document.getElementById('btnCloseSettings').addEventListener('click', closeSettingsModal);
+            document.getElementById('btnLogoutGoogle').addEventListener('click', () => {
+                googleLogout();
+                closeSettingsModal();
+            });
+            document.getElementById('btnExportData').addEventListener('click', exportData);
+            document.getElementById('btnImportData').addEventListener('click', importData);
+            document.getElementById('importFile').addEventListener('change', handleImport);
+            document.getElementById('btnClearData').addEventListener('click', clearAllData);
+
+            // Modal overlay click to close
+            document.getElementById('addTaskModal').addEventListener('click', (e) => {
+                if (e.target === e.currentTarget) closeAddTaskModal();
+            });
+            document.getElementById('settingsModal').addEventListener('click', (e) => {
+                if (e.target === e.currentTarget) closeSettingsModal();
+            });
+        }
+
+        // =====================================================
+        // INITIALIZATION
+        // =====================================================
+
+        async function init() {
+            try {
+                await initDB();
+                await getAllTasks();
+                await initGoogleAuth();
+
+                setupEventListeners();
+                renderTasks();
+
+                // Check if we have a saved token
+                if (googleAccessToken) {
+                    showApp();
+                } else {
+                    showLogin();
+                }
+
+                // Register service worker
+                if ('serviceWorker' in navigator) {
+                    navigator.serviceWorker.register('sw.js')
+                        .then(() => console.log('Service Worker registered'))
+                        .catch(err => console.log('SW registration failed:', err));
+                }
+
+            } catch (error) {
+                console.error('Init error:', error);
+                showToast('Initialisatie fout: ' + error.message, 'error');
+            }
+        }
+
+        // Start the app
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>
