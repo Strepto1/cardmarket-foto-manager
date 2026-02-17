@@ -1075,8 +1075,8 @@
 
         // Google OAuth Configuration
         // USER MUST REPLACE THIS WITH THEIR OWN CLIENT ID
-        const GOOGLE_CLIENT_ID = '798382176554-foctga75o3ru9pjnfqv6jtjr0t7kig6v.apps.googleusercontent.com';
-        const GMAIL_SCOPES = 'https://www.googleapis.com/auth/gmail.readonly';
+        const GOOGLE_CLIENT_ID = 'YOUR_CLIENT_ID_HERE.apps.googleusercontent.com';
+        const GMAIL_SCOPES = 'https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.send';
 
         // IndexedDB Configuration
         const DB_NAME = 'CardmarketPhotoDB';
@@ -1298,9 +1298,9 @@
                     <div class="task-actions">
                         <button class="btn btn-primary btn-small" onclick="openCamera(${task.id})">📸 Foto</button>
                         ${task.photos?.length ? `
-                            <button class="btn btn-secondary btn-small" onclick="downloadAllPhotos(${task.id})">💾 Download Alle</button>
+                            <button class="btn btn-success btn-small" onclick="sendEmailWithPhotos(${task.id})">📤 Verstuur</button>
+                            <button class="btn btn-secondary btn-small" onclick="downloadAllPhotos(${task.id})">💾 Download</button>
                         ` : ''}
-                        <button class="btn btn-secondary btn-small" onclick="composeEmail(${task.id})">✉️ Email</button>
                         <button class="btn ${task.completed ? 'btn-secondary' : 'btn-success'} btn-small" onclick="toggleComplete(${task.id})">
                             ${task.completed ? '↩️ Open' : '✓ Klaar'}
                         </button>
@@ -1395,6 +1395,106 @@
                 setTimeout(() => {
                     window.open(gmailUrl, '_blank');
                 }, 1500);
+            }
+        }
+
+        async function sendEmailWithPhotos(taskId) {
+            const task = tasks.find(t => t.id === taskId);
+            if (!task) {
+                showToast('Taak niet gevonden', 'error');
+                return;
+            }
+
+            if (!task.photos || task.photos.length === 0) {
+                showToast('Geen foto\'s om te versturen', 'error');
+                return;
+            }
+
+            if (!googleAccessToken) {
+                showToast('Log eerst in met Google', 'error');
+                return;
+            }
+
+            showToast('Email wordt verstuurd...', 'info');
+
+            try {
+                const photoCount = task.photos.length;
+                const boundary = 'boundary_' + Date.now();
+                
+                // Email headers en body
+                const emailSubject = 'Re: Photo request';
+                const emailBody = `Hi ${task.username},
+
+Here ${photoCount === 1 ? 'is the photo' : 'are the photos'} you requested.
+
+Best regards`;
+
+                // Bouw de MIME message
+                let mimeMessage = '';
+                mimeMessage += `To: ${task.email}\r\n`;
+                mimeMessage += `Subject: ${emailSubject}\r\n`;
+                mimeMessage += `MIME-Version: 1.0\r\n`;
+                mimeMessage += `Content-Type: multipart/mixed; boundary="${boundary}"\r\n\r\n`;
+                
+                // Text body
+                mimeMessage += `--${boundary}\r\n`;
+                mimeMessage += `Content-Type: text/plain; charset="UTF-8"\r\n\r\n`;
+                mimeMessage += `${emailBody}\r\n\r\n`;
+                
+                // Foto's als bijlagen
+                for (let i = 0; i < task.photos.length; i++) {
+                    const photo = task.photos[i];
+                    // Haal base64 data uit de data URL
+                    const base64Data = photo.data.split(',')[1];
+                    const filename = `${task.username}_foto_${i + 1}.jpg`;
+                    
+                    mimeMessage += `--${boundary}\r\n`;
+                    mimeMessage += `Content-Type: image/jpeg\r\n`;
+                    mimeMessage += `Content-Disposition: attachment; filename="${filename}"\r\n`;
+                    mimeMessage += `Content-Transfer-Encoding: base64\r\n\r\n`;
+                    mimeMessage += `${base64Data}\r\n`;
+                }
+                
+                mimeMessage += `--${boundary}--`;
+
+                // Encode naar base64url
+                const encodedMessage = btoa(unescape(encodeURIComponent(mimeMessage)))
+                    .replace(/\+/g, '-')
+                    .replace(/\//g, '_')
+                    .replace(/=+$/, '');
+
+                // Verstuur via Gmail API
+                const response = await fetch('https://www.googleapis.com/gmail/v1/users/me/messages/send', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${googleAccessToken}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        raw: encodedMessage
+                    })
+                });
+
+                if (!response.ok) {
+                    if (response.status === 401) {
+                        googleLogout();
+                        throw new Error('Token verlopen, log opnieuw in');
+                    }
+                    const errorData = await response.json();
+                    throw new Error(errorData.error?.message || 'Verzenden mislukt');
+                }
+
+                // Markeer als voltooid
+                task.completed = true;
+                await saveTask(task);
+                await getAllTasks();
+                renderTasks();
+
+                showToast(`✓ Email met ${photoCount} foto('s) verstuurd naar ${task.username}!`, 'success');
+
+            } catch (error) {
+                console.error('Send email error:', error);
+                showToast('Fout: ' + error.message, 'error');
             }
         }
 
