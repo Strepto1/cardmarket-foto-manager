@@ -486,6 +486,86 @@
             pointer-events: none;
         }
 
+        .focus-indicator {
+            position: absolute;
+            width: 80px;
+            height: 80px;
+            border: 3px solid var(--accent-primary);
+            border-radius: 50%;
+            pointer-events: none;
+            opacity: 0;
+            transform: scale(1.5);
+            transition: all 0.2s ease;
+        }
+
+        .focus-indicator.active {
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        .focus-indicator.focused {
+            border-color: var(--success);
+        }
+
+        .camera-zoom-controls {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            padding: 12px 20px;
+            background: var(--bg-card);
+        }
+
+        .zoom-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: 1px solid var(--border-color);
+            background: var(--bg-elevated);
+            color: var(--text-primary);
+            font-size: 24px;
+            font-weight: bold;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .zoom-btn:active {
+            background: var(--accent-primary);
+            color: var(--bg-primary);
+        }
+
+        #zoomSlider {
+            flex: 1;
+            max-width: 150px;
+            height: 6px;
+            -webkit-appearance: none;
+            appearance: none;
+            background: var(--border-color);
+            border-radius: 3px;
+            outline: none;
+        }
+
+        #zoomSlider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: var(--accent-gradient);
+            cursor: pointer;
+            border: 2px solid white;
+        }
+
+        .zoom-level {
+            font-family: 'Space Mono', monospace;
+            font-size: 14px;
+            color: var(--accent-primary);
+            min-width: 45px;
+            text-align: center;
+        }
+
         .camera-controls {
             padding: 20px;
             background: var(--bg-secondary);
@@ -990,9 +1070,16 @@
             <span class="camera-title" id="cameraTitle">Foto's maken</span>
             <button class="btn-icon" id="btnCloseCamera">✕</button>
         </div>
-        <div class="camera-preview">
+        <div class="camera-preview" id="cameraPreview">
             <video id="cameraVideo" autoplay playsinline></video>
             <div class="camera-crosshair"></div>
+            <div class="focus-indicator" id="focusIndicator"></div>
+        </div>
+        <div class="camera-zoom-controls">
+            <button class="zoom-btn" id="btnZoomOut">−</button>
+            <input type="range" id="zoomSlider" min="1" max="5" step="0.1" value="1">
+            <button class="zoom-btn" id="btnZoomIn">+</button>
+            <span class="zoom-level" id="zoomLevel">1.0x</span>
         </div>
         <div class="camera-photos" id="cameraPhotos">
             <!-- Photo thumbnails will appear here -->
@@ -1502,30 +1589,172 @@ Best regards`;
         // CAMERA FUNCTIONS
         // =====================================================
 
+        let currentZoom = 1;
+        let maxZoom = 1;
+        let cameraTrack = null;
+        let cameraCapabilities = null;
+
         async function openCamera(taskId) {
             currentTaskId = taskId;
             sessionPhotos = [];
+            currentZoom = 1;
 
             const task = tasks.find(t => t.id === taskId);
             document.getElementById('cameraTitle').textContent = `Foto's voor ${task?.username || 'taak'}`;
             document.getElementById('cameraPhotos').innerHTML = '';
 
             try {
+                // Vraag camera met geavanceerde instellingen
                 const stream = await navigator.mediaDevices.getUserMedia({
                     video: {
-                        facingMode: 'environment',
-                        width: { ideal: 1920 },
-                        height: { ideal: 1080 }
+                        facingMode: { ideal: 'environment' },
+                        width: { ideal: 4096 },
+                        height: { ideal: 2160 },
+                        focusMode: { ideal: 'continuous' },
+                        zoom: true
                     }
                 });
 
                 cameraStream = stream;
+                cameraTrack = stream.getVideoTracks()[0];
+                
+                // Check camera mogelijkheden
+                if (cameraTrack.getCapabilities) {
+                    cameraCapabilities = cameraTrack.getCapabilities();
+                    console.log('Camera capabilities:', cameraCapabilities);
+                    
+                    // Stel max zoom in
+                    if (cameraCapabilities.zoom) {
+                        maxZoom = cameraCapabilities.zoom.max || 5;
+                        document.getElementById('zoomSlider').max = maxZoom;
+                        document.getElementById('zoomSlider').value = 1;
+                    }
+                    
+                    // Probeer continuous autofocus te activeren
+                    if (cameraCapabilities.focusMode && cameraCapabilities.focusMode.includes('continuous')) {
+                        await cameraTrack.applyConstraints({
+                            focusMode: 'continuous'
+                        });
+                    }
+                }
+
                 document.getElementById('cameraVideo').srcObject = stream;
                 document.getElementById('cameraOverlay').classList.add('active');
+                
+                // Setup zoom controls
+                setupZoomControls();
+                
+                // Setup tap-to-focus
+                setupTapToFocus();
+                
+                updateZoomDisplay();
+
             } catch (error) {
                 console.error('Camera error:', error);
                 showToast('Kon camera niet openen. Controleer permissies.', 'error');
             }
+        }
+
+        function setupZoomControls() {
+            const slider = document.getElementById('zoomSlider');
+            const btnZoomIn = document.getElementById('btnZoomIn');
+            const btnZoomOut = document.getElementById('btnZoomOut');
+
+            slider.oninput = (e) => {
+                setZoom(parseFloat(e.target.value));
+            };
+
+            btnZoomIn.onclick = () => {
+                const newZoom = Math.min(currentZoom + 0.5, maxZoom);
+                setZoom(newZoom);
+            };
+
+            btnZoomOut.onclick = () => {
+                const newZoom = Math.max(currentZoom - 0.5, 1);
+                setZoom(newZoom);
+            };
+        }
+
+        async function setZoom(zoomLevel) {
+            if (!cameraTrack || !cameraCapabilities?.zoom) {
+                showToast('Zoom niet beschikbaar op deze camera', 'error');
+                return;
+            }
+
+            try {
+                currentZoom = Math.max(1, Math.min(zoomLevel, maxZoom));
+                await cameraTrack.applyConstraints({
+                    advanced: [{ zoom: currentZoom }]
+                });
+                updateZoomDisplay();
+            } catch (error) {
+                console.error('Zoom error:', error);
+            }
+        }
+
+        function updateZoomDisplay() {
+            document.getElementById('zoomSlider').value = currentZoom;
+            document.getElementById('zoomLevel').textContent = currentZoom.toFixed(1) + 'x';
+        }
+
+        function setupTapToFocus() {
+            const preview = document.getElementById('cameraPreview');
+            const video = document.getElementById('cameraVideo');
+            const focusIndicator = document.getElementById('focusIndicator');
+
+            preview.onclick = async (e) => {
+                if (!cameraTrack || !cameraCapabilities) return;
+
+                // Check of de camera focusPointOfInterest ondersteunt
+                const supportsPOI = cameraCapabilities.focusMode && 
+                    (cameraCapabilities.focusMode.includes('single-shot') || 
+                     cameraCapabilities.focusMode.includes('manual'));
+
+                // Bereken tik positie
+                const rect = preview.getBoundingClientRect();
+                const x = (e.clientX - rect.left) / rect.width;
+                const y = (e.clientY - rect.top) / rect.height;
+
+                // Toon focus indicator
+                focusIndicator.style.left = (e.clientX - rect.left - 40) + 'px';
+                focusIndicator.style.top = (e.clientY - rect.top - 40) + 'px';
+                focusIndicator.classList.add('active');
+                focusIndicator.classList.remove('focused');
+
+                try {
+                    // Probeer te focussen op het punt
+                    if (cameraCapabilities.focusMode?.includes('single-shot')) {
+                        const constraints = {
+                            focusMode: 'single-shot'
+                        };
+                        
+                        // Voeg point of interest toe als ondersteund
+                        if (cameraCapabilities.pointsOfInterest) {
+                            constraints.pointsOfInterest = [{ x, y }];
+                        }
+                        
+                        await cameraTrack.applyConstraints(constraints);
+                    } else if (cameraCapabilities.focusMode?.includes('continuous')) {
+                        // Herstart continuous focus
+                        await cameraTrack.applyConstraints({
+                            focusMode: 'continuous'
+                        });
+                    }
+
+                    // Toon success na korte delay
+                    setTimeout(() => {
+                        focusIndicator.classList.add('focused');
+                    }, 300);
+
+                } catch (error) {
+                    console.log('Focus niet ondersteund:', error);
+                }
+
+                // Verberg indicator na 1 seconde
+                setTimeout(() => {
+                    focusIndicator.classList.remove('active', 'focused');
+                }, 1000);
+            };
         }
 
         function closeCamera() {
@@ -1533,6 +1762,10 @@ Best regards`;
                 cameraStream.getTracks().forEach(track => track.stop());
                 cameraStream = null;
             }
+            cameraTrack = null;
+            cameraCapabilities = null;
+            currentZoom = 1;
+            
             document.getElementById('cameraOverlay').classList.remove('active');
             document.getElementById('cameraVideo').srcObject = null;
 
@@ -1554,7 +1787,7 @@ Best regards`;
             canvas.height = video.videoHeight;
             ctx.drawImage(video, 0, 0);
 
-            const photoData = canvas.toDataURL('image/jpeg', 0.9);
+            const photoData = canvas.toDataURL('image/jpeg', 0.92);
             sessionPhotos.push({
                 data: photoData,
                 timestamp: new Date().toISOString()
