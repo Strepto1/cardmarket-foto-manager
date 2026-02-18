@@ -2,14 +2,17 @@
     "name": "Cardmarket Hub",
     "short_name": "CM Hub",
     "description": "Cardmarket email classificatie, inventaris beheer en label generatie",
-    "start_url": "/",
+    "start_url": "/cardmarket-foto-manager/",
     "display": "standalone",
     "orientation": "portrait",
     "background_color": "#0d0d1a",
     "theme_color": "#1a1a2e",
-    "scope": "/",
+    "scope": "/cardmarket-foto-manager/",
     "lang": "nl",
-    "categories": ["productivity", "utilities"],
+    "categories": [
+        "productivity",
+        "utilities"
+    ],
     "icons": [
         {
             "src": "icons/icon-72.png",
@@ -65,15 +68,16 @@
             "name": "Sync Gmail",
             "short_name": "Sync",
             "description": "Synchroniseer met Gmail",
-            "url": "/?action=sync"
+            "url": "/cardmarket-foto-manager/?action=sync"
         },
         {
             "name": "Labels Exporteren",
             "short_name": "Labels",
             "description": "Download verzendlabels",
-            "url": "/?tab=labels"
+            "url": "/cardmarket-foto-manager/?tab=labels"
         }
     ],
     "related_applications": [],
-    "prefer_related_applications": false
+    "prefer_related_applications": false,
+    "id": "cardmarket-foto-manager"
 }
