@@ -1,13 +1,13 @@
 {
-    "name": "Cardmarket Foto Manager",
-    "short_name": "Cardmarket",
-    "description": "Beheer foto-verzoeken van Cardmarket kopers",
-    "start_url": "/cardmarket-foto-manager/",
+    "name": "Cardmarket Hub",
+    "short_name": "CM Hub",
+    "description": "Cardmarket email classificatie, inventaris beheer en label generatie",
+    "start_url": "/",
     "display": "standalone",
     "orientation": "portrait",
     "background_color": "#0d0d1a",
     "theme_color": "#1a1a2e",
-    "scope": "/cardmarket-foto-manager/",
+    "scope": "/",
     "lang": "nl",
     "categories": ["productivity", "utilities"],
     "icons": [
@@ -60,44 +60,18 @@
             "purpose": "maskable any"
         }
     ],
-    "screenshots": [
-        {
-            "src": "icons/screenshot-wide.png",
-            "sizes": "1280x720",
-            "type": "image/png",
-            "form_factor": "wide"
-        },
-        {
-            "src": "icons/screenshot-narrow.png",
-            "sizes": "720x1280",
-            "type": "image/png",
-            "form_factor": "narrow"
-        }
-    ],
     "shortcuts": [
         {
-            "name": "Scan Gmail",
+            "name": "Sync Gmail",
             "short_name": "Sync",
             "description": "Synchroniseer met Gmail",
-            "url": "/?action=sync",
-            "icons": [
-                {
-                    "src": "icons/icon-sync.png",
-                    "sizes": "96x96"
-                }
-            ]
+            "url": "/?action=sync"
         },
         {
-            "name": "Nieuwe Taak",
-            "short_name": "Toevoegen",
-            "description": "Handmatig taak toevoegen",
-            "url": "/?action=add",
-            "icons": [
-                {
-                    "src": "icons/icon-add.png",
-                    "sizes": "96x96"
-                }
-            ]
+            "name": "Labels Exporteren",
+            "short_name": "Labels",
+            "description": "Download verzendlabels",
+            "url": "/?tab=labels"
         }
     ],
     "related_applications": [],
