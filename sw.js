@@ -2,13 +2,20 @@
 // CARDMARKET FOTO MANAGER - SERVICE WORKER
 // =====================================================
 
-const CACHE_NAME = 'cardmarket-foto-v1';
+const CACHE_NAME = 'cardmarket-foto-v2';
 const STATIC_ASSETS = [
-    '/',
-    '/index.html',
-    '/manifest.json',
-    '/icons/icon-192.png',
-    '/icons/icon-512.png'
+    '/cardmarket-foto-manager/',
+    '/cardmarket-foto-manager/index.html',
+    '/cardmarket-foto-manager/manifest.json',
+    '/cardmarket-foto-manager/sw.js',
+    '/cardmarket-foto-manager/icons/icon-72.png',
+    '/cardmarket-foto-manager/icons/icon-96.png',
+    '/cardmarket-foto-manager/icons/icon-128.png',
+    '/cardmarket-foto-manager/icons/icon-144.png',
+    '/cardmarket-foto-manager/icons/icon-152.png',
+    '/cardmarket-foto-manager/icons/icon-192.png',
+    '/cardmarket-foto-manager/icons/icon-384.png',
+    '/cardmarket-foto-manager/icons/icon-512.png',
 ];
 
 // External resources to cache
@@ -60,10 +67,7 @@ self.addEventListener('activate', (event) => {
 });
 
 // Fetch event - serve from cache, fallback to network
-self.addEventListener('fetch', (event) => {
-    const url = new URL(event.request.url);
-    
-    // Skip cross-origin requests except for fonts and Google APIs
+// Skip cross-origin requests except for fonts and Google APIs
     if (url.origin !== location.origin && 
         !url.hostname.includes('googleapis.com') &&
         !url.hostname.includes('gstatic.com') &&
@@ -167,3 +171,36 @@ self.addEventListener('notificationclick', (event) => {
 });
 
 console.log('[SW] Service worker loaded');
+
+
+self.addEventListener('fetch', (event) => {
+    const req = event.request;
+    if (req.method !== 'GET') return;
+
+    event.respondWith((async () => {
+        const cache = await caches.open(CACHE_NAME);
+
+        if (req.mode === 'navigate') {
+            try {
+                const net = await fetch(req);
+                cache.put('/cardmarket-foto-manager/index.html', net.clone());
+                return net;
+            } catch (e) {
+                return (await cache.match('/cardmarket-foto-manager/index.html')) ||
+                       (await cache.match('/cardmarket-foto-manager/')) ||
+                       Response.error();
+            }
+        }
+
+        const cached = await cache.match(req);
+        if (cached) return cached;
+
+        const res = await fetch(req);
+        const url = new URL(req.url);
+        if (url.origin === self.location.origin &&
+            url.pathname.startsWith('/cardmarket-foto-manager/')) {
+            cache.put(req, res.clone());
+        }
+        return res;
+    })());
+});
