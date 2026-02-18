@@ -77,7 +77,12 @@
         .section-title { font-size: 13px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 1px; }
 
         /* Cards */
-        .card { background: var(--bg-card); border-radius: var(--radius-md); border: 1px solid var(--border-color); margin-bottom: 10px; overflow: hidden; }
+        .card-wrapper { position: relative; margin-bottom: 10px; overflow: hidden; border-radius: var(--radius-md); }
+        .card-delete-bg { position: absolute; inset: 0; background: var(--danger); display: flex; align-items: center; justify-content: flex-end; padding-right: 20px; color: white; font-weight: 600; font-size: 14px; }
+        .card-delete-bg::after { content: '🗑️ Verwijderen'; }
+        .card { background: var(--bg-card); border-radius: var(--radius-md); border: 1px solid var(--border-color); overflow: hidden; position: relative; transition: transform 0.2s ease; z-index: 1; }
+        .card.swiping { transition: none; }
+        .card.deleting { transform: translateX(-100%); transition: transform 0.3s ease; }
         .card-header { padding: 12px 14px; cursor: pointer; }
         .card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
         .card-title { font-size: 14px; font-weight: 600; color: var(--text-primary); line-height: 1.3; }
@@ -159,7 +164,9 @@
         .inv-card-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 
         /* Labels */
-        .label-card { background: var(--bg-card); border-radius: var(--radius-md); padding: 12px; margin-bottom: 8px; border: 1px solid var(--border-color); }
+        .label-card { background: var(--bg-card); border-radius: var(--radius-md); padding: 12px; border: 1px solid var(--border-color); position: relative; transition: transform 0.2s ease; z-index: 1; }
+        .label-card.swiping { transition: none; }
+        .label-card.deleting { transform: translateX(-100%); transition: transform 0.3s ease; }
         .label-card .buyer { font-weight: 600; color: var(--accent-primary); margin-bottom: 4px; }
         .label-card .address { font-size: 12px; color: var(--text-secondary); white-space: pre-line; }
         .label-card .items { font-size: 11px; color: var(--text-muted); margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--border-color); }
@@ -173,6 +180,15 @@
         .camera-preview { flex: 1; position: relative; background: black; overflow: hidden; }
         .camera-preview video { width: 100%; height: 100%; object-fit: cover; }
         .camera-crosshair { position: absolute; inset: 20%; border: 2px dashed rgba(255,215,0,0.5); border-radius: var(--radius-md); pointer-events: none; }
+        .focus-indicator { position: absolute; width: 80px; height: 80px; border: 3px solid var(--accent-primary); border-radius: 50%; pointer-events: none; opacity: 0; transform: scale(1.5); transition: all 0.2s ease; }
+        .focus-indicator.active { opacity: 1; transform: scale(1); }
+        .focus-indicator.focused { border-color: var(--success); }
+        .camera-zoom-controls { display: flex; align-items: center; justify-content: center; gap: 12px; padding: 10px 16px; background: var(--bg-card); }
+        .zoom-btn { width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--border-color); background: var(--bg-elevated); color: var(--text-primary); font-size: 20px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+        .zoom-btn:active { background: var(--accent-primary); color: var(--bg-primary); }
+        #zoomSlider { flex: 1; max-width: 120px; height: 6px; -webkit-appearance: none; appearance: none; background: var(--border-color); border-radius: 3px; outline: none; }
+        #zoomSlider::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 20px; height: 20px; border-radius: 50%; background: var(--accent-gradient); cursor: pointer; border: 2px solid white; }
+        .zoom-level { font-family: 'Space Mono', monospace; font-size: 12px; color: var(--accent-primary); min-width: 40px; text-align: center; }
         .camera-thumbs { display: flex; gap: 8px; padding: 8px 16px; background: var(--bg-card); overflow-x: auto; min-height: 60px; align-items: center; }
         .camera-thumb { width: 50px; height: 50px; border-radius: var(--radius-sm); overflow: hidden; flex-shrink: 0; border: 2px solid var(--accent-primary); }
         .camera-thumb img { width: 100%; height: 100%; object-fit: cover; }
@@ -368,9 +384,16 @@
             <span class="camera-title" id="cameraTitle">Foto maken</span>
             <button class="btn-icon" id="btnCloseCamera">✕</button>
         </div>
-        <div class="camera-preview">
+        <div class="camera-preview" id="cameraPreview">
             <video id="cameraVideo" autoplay playsinline></video>
             <div class="camera-crosshair"></div>
+            <div class="focus-indicator" id="focusIndicator"></div>
+        </div>
+        <div class="camera-zoom-controls">
+            <button class="zoom-btn" id="btnZoomOut">−</button>
+            <input type="range" id="zoomSlider" min="1" max="5" step="0.1" value="1">
+            <button class="zoom-btn" id="btnZoomIn">+</button>
+            <span class="zoom-level" id="zoomLevel">1.0x</span>
         </div>
         <div class="camera-thumbs" id="cameraPhotos"></div>
         <div class="camera-save-option" id="cameraSaveOption">
@@ -664,14 +687,16 @@
                 const totalPhotos = invPhotos.length + taskPhotos.length;
                 
                 return `
-                    <div class="card ${task.completed ? 'completed' : ''}" data-id="${task.id}">
-                        <div class="card-header" onclick="toggleCard('photo', ${task.id})">
-                            <div class="card-top">
-                                <span class="card-title">${task.title || 'Geen titel'}</span>
-                                <span class="card-date">${date}</span>
-                            </div>
-                            <div class="card-username">👤 ${task.username}</div>
-                            ${task.description ? `<div class="card-description">${escapeHtml(task.description)}</div>` : ''}
+                    <div class="card-wrapper" data-type="task" data-id="${task.id}">
+                        <div class="card-delete-bg"></div>
+                        <div class="card ${task.completed ? 'completed' : ''}" data-id="${task.id}">
+                            <div class="card-header" onclick="toggleCard('photo', ${task.id})">
+                                <div class="card-top">
+                                    <span class="card-title">${task.title || 'Geen titel'}</span>
+                                    <span class="card-date">${date}</span>
+                                </div>
+                                <div class="card-username">👤 ${task.username}</div>
+                                ${task.description ? `<div class="card-description">${escapeHtml(task.description)}</div>` : ''}
                             <div class="card-meta">
                                 <span class="card-tag photo">📸 Foto</span>
                                 ${linkedInv ? `<span class="card-tag linked">🔗 Gekoppeld</span>` : `<span class="card-tag no-link">⚠️ Niet gekoppeld</span>`}
@@ -713,9 +738,12 @@
                             <button class="btn btn-success btn-small" onclick="toggleComplete(${task.id})">${task.completed ? '↩️' : '✓'}</button>
                             <button class="btn btn-danger btn-small" onclick="removeTask(${task.id})">🗑️</button>
                         </div>
+                        </div>
                     </div>
                 `;
             }).join('');
+            
+            setupSwipeToDelete();
         }
 
         function renderQuestionTasks() {
@@ -733,27 +761,32 @@
             container.innerHTML = questionTasks.map(task => {
                 const date = new Date(task.date).toLocaleDateString('nl-NL', { day: '2-digit', month: 'short' });
                 return `
-                    <div class="card ${task.completed ? 'completed' : ''}" data-id="${task.id}">
-                        <div class="card-header" onclick="toggleCard('question', ${task.id})">
-                            <div class="card-top">
-                                <span class="card-title">${task.title || 'Vraag'}</span>
-                                <span class="card-date">${date}</span>
+                    <div class="card-wrapper" data-type="task" data-id="${task.id}">
+                        <div class="card-delete-bg"></div>
+                        <div class="card ${task.completed ? 'completed' : ''}" data-id="${task.id}">
+                            <div class="card-header" onclick="toggleCard('question', ${task.id})">
+                                <div class="card-top">
+                                    <span class="card-title">${task.title || 'Vraag'}</span>
+                                    <span class="card-date">${date}</span>
+                                </div>
+                                <div class="card-username">👤 ${task.username}</div>
+                                ${task.description ? `<div class="card-description">${escapeHtml(task.description)}</div>` : ''}
+                                <div class="card-meta">
+                                    <span class="card-tag question">❓ Vraag</span>
+                                    ${task.completed ? '<span class="card-tag done">✓ Klaar</span>' : ''}
+                                </div>
                             </div>
-                            <div class="card-username">👤 ${task.username}</div>
-                            ${task.description ? `<div class="card-description">${escapeHtml(task.description)}</div>` : ''}
-                            <div class="card-meta">
-                                <span class="card-tag question">❓ Vraag</span>
-                                ${task.completed ? '<span class="card-tag done">✓ Klaar</span>' : ''}
+                            <div class="card-actions">
+                                <button class="btn btn-info btn-small" onclick="openEmail(${task.id})">✉️ Email</button>
+                                <button class="btn btn-success btn-small" onclick="toggleComplete(${task.id})">${task.completed ? '↩️' : '✓'}</button>
+                                <button class="btn btn-danger btn-small" onclick="removeTask(${task.id})">🗑️</button>
                             </div>
-                        </div>
-                        <div class="card-actions">
-                            <button class="btn btn-info btn-small" onclick="openEmail(${task.id})">✉️ Email</button>
-                            <button class="btn btn-success btn-small" onclick="toggleComplete(${task.id})">${task.completed ? '↩️' : '✓'}</button>
-                            <button class="btn btn-danger btn-small" onclick="removeTask(${task.id})">🗑️</button>
                         </div>
                     </div>
                 `;
             }).join('');
+            
+            setupSwipeToDelete();
         }
 
         // =====================================================
@@ -850,19 +883,24 @@
             }
 
             container.innerHTML = labels.map(label => `
-                <div class="label-card">
-                    <div class="buyer">📦 ${label.buyer}</div>
-                    <div class="address">${label.address}</div>
-                    <div class="items">
-                        ${(label.items || []).map(i => `${i.quantity}x ${i.name}`).join(', ')}
-                        <br>💰 €${label.totalPrice?.toFixed(2) || '0.00'}
-                    </div>
-                    <div class="label-actions">
-                        <button class="btn btn-success btn-small" onclick="markLabelShipped(${label.id})">✓ Verstuurd</button>
-                        <button class="btn btn-danger btn-small" onclick="removeLabel(${label.id})">🗑️</button>
+                <div class="card-wrapper" data-type="label" data-id="${label.id}">
+                    <div class="card-delete-bg"></div>
+                    <div class="label-card">
+                        <div class="buyer">📦 ${label.buyer}</div>
+                        <div class="address">${label.address}</div>
+                        <div class="items">
+                            ${(label.items || []).map(i => `${i.quantity}x ${i.name}`).join(', ')}
+                            <br>💰 €${label.totalPrice?.toFixed(2) || '0.00'}
+                        </div>
+                        <div class="label-actions">
+                            <button class="btn btn-success btn-small" onclick="markLabelShipped(${label.id})">✓ Verstuurd</button>
+                            <button class="btn btn-danger btn-small" onclick="removeLabel(${label.id})">🗑️</button>
+                        </div>
                     </div>
                 </div>
             `).join('');
+            
+            setupSwipeToDelete();
         }
 
         // =====================================================
@@ -899,8 +937,8 @@
             }
         }
 
-        async function removeTask(id) {
-            if (confirm('Taak verwijderen?')) {
+        async function removeTask(id, silent = false) {
+            if (silent || confirm('Taak verwijderen?')) {
                 await deleteTask(id);
                 await getAllTasks();
                 renderPhotoTasks();
@@ -1006,19 +1044,119 @@
             await startCamera();
         }
 
+        let currentZoom = 1;
+        let maxZoom = 1;
+        let cameraTrack = null;
+        let cameraCapabilities = null;
+
         async function startCamera() {
             sessionPhotos = [];
             document.getElementById('cameraPhotos').innerHTML = '';
+            currentZoom = 1;
             
             try {
                 cameraStream = await navigator.mediaDevices.getUserMedia({
-                    video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } }
+                    video: { 
+                        facingMode: { ideal: 'environment' }, 
+                        width: { ideal: 4096 }, 
+                        height: { ideal: 2160 },
+                        focusMode: { ideal: 'continuous' }
+                    }
                 });
+                
+                cameraTrack = cameraStream.getVideoTracks()[0];
+                
+                // Check camera capabilities
+                if (cameraTrack.getCapabilities) {
+                    cameraCapabilities = cameraTrack.getCapabilities();
+                    
+                    // Set max zoom
+                    if (cameraCapabilities.zoom) {
+                        maxZoom = cameraCapabilities.zoom.max || 5;
+                        document.getElementById('zoomSlider').max = maxZoom;
+                        document.getElementById('zoomSlider').value = 1;
+                    }
+                    
+                    // Enable continuous autofocus
+                    if (cameraCapabilities.focusMode && cameraCapabilities.focusMode.includes('continuous')) {
+                        await cameraTrack.applyConstraints({ focusMode: 'continuous' });
+                    }
+                }
+                
                 document.getElementById('cameraVideo').srcObject = cameraStream;
                 document.getElementById('cameraOverlay').classList.add('active');
+                
+                setupZoomControls();
+                setupTapToFocus();
+                updateZoomDisplay();
+                
             } catch (error) {
                 showToast('Camera toegang geweigerd', 'error');
             }
+        }
+
+        function setupZoomControls() {
+            const slider = document.getElementById('zoomSlider');
+            const btnZoomIn = document.getElementById('btnZoomIn');
+            const btnZoomOut = document.getElementById('btnZoomOut');
+
+            slider.oninput = (e) => setZoom(parseFloat(e.target.value));
+            btnZoomIn.onclick = () => setZoom(Math.min(currentZoom + 0.5, maxZoom));
+            btnZoomOut.onclick = () => setZoom(Math.max(currentZoom - 0.5, 1));
+        }
+
+        async function setZoom(zoomLevel) {
+            if (!cameraTrack || !cameraCapabilities?.zoom) return;
+
+            try {
+                currentZoom = Math.max(1, Math.min(zoomLevel, maxZoom));
+                await cameraTrack.applyConstraints({ advanced: [{ zoom: currentZoom }] });
+                updateZoomDisplay();
+            } catch (error) {
+                console.error('Zoom error:', error);
+            }
+        }
+
+        function updateZoomDisplay() {
+            document.getElementById('zoomSlider').value = currentZoom;
+            document.getElementById('zoomLevel').textContent = currentZoom.toFixed(1) + 'x';
+        }
+
+        function setupTapToFocus() {
+            const preview = document.getElementById('cameraPreview');
+            const focusIndicator = document.getElementById('focusIndicator');
+
+            preview.onclick = async (e) => {
+                if (!cameraTrack || !cameraCapabilities) return;
+
+                const rect = preview.getBoundingClientRect();
+                const x = (e.clientX - rect.left) / rect.width;
+                const y = (e.clientY - rect.top) / rect.height;
+
+                // Show focus indicator
+                focusIndicator.style.left = (e.clientX - rect.left - 40) + 'px';
+                focusIndicator.style.top = (e.clientY - rect.top - 40) + 'px';
+                focusIndicator.classList.add('active');
+                focusIndicator.classList.remove('focused');
+
+                try {
+                    if (cameraCapabilities.focusMode?.includes('single-shot')) {
+                        const constraints = { focusMode: 'single-shot' };
+                        if (cameraCapabilities.pointsOfInterest) {
+                            constraints.pointsOfInterest = [{ x, y }];
+                        }
+                        await cameraTrack.applyConstraints(constraints);
+                    } else if (cameraCapabilities.focusMode?.includes('continuous')) {
+                        await cameraTrack.applyConstraints({ focusMode: 'continuous' });
+                    }
+
+                    setTimeout(() => focusIndicator.classList.add('focused'), 300);
+                } catch (error) {
+                    console.log('Focus niet ondersteund:', error);
+                }
+
+                setTimeout(() => focusIndicator.classList.remove('active', 'focused'), 1000);
+            };
         }
 
         async function closeCamera() {
@@ -1030,6 +1168,10 @@
                 cameraStream.getTracks().forEach(track => track.stop());
                 cameraStream = null;
             }
+            
+            cameraTrack = null;
+            cameraCapabilities = null;
+            currentZoom = 1;
             
             document.getElementById('cameraOverlay').classList.remove('active');
             currentTaskId = null;
@@ -1335,6 +1477,24 @@
             }
         }
 
+        function decodeBase64UTF8(base64String) {
+            // Convert base64url to standard base64
+            const base64 = base64String.replace(/-/g, '+').replace(/_/g, '/');
+            
+            // Decode base64 to binary string
+            const binaryString = atob(base64);
+            
+            // Convert binary string to UTF-8
+            const bytes = new Uint8Array(binaryString.length);
+            for (let i = 0; i < binaryString.length; i++) {
+                bytes[i] = binaryString.charCodeAt(i);
+            }
+            
+            // Decode as UTF-8
+            const decoder = new TextDecoder('utf-8');
+            return decoder.decode(bytes);
+        }
+
         async function processEmail(gmailMessage) {
             try {
                 const headers = gmailMessage.payload.headers;
@@ -1344,10 +1504,10 @@
                 let body = '';
                 const payload = gmailMessage.payload;
                 if (payload.body?.data) {
-                    body = atob(payload.body.data.replace(/-/g, '+').replace(/_/g, '/'));
+                    body = decodeBase64UTF8(payload.body.data);
                 } else if (payload.parts) {
                     const textPart = payload.parts.find(p => p.mimeType === 'text/plain');
-                    if (textPart?.body?.data) body = atob(textPart.body.data.replace(/-/g, '+').replace(/_/g, '/'));
+                    if (textPart?.body?.data) body = decodeBase64UTF8(textPart.body.data);
                 }
 
                 if (subject.includes('Please ship')) {
@@ -1542,12 +1702,13 @@
             showToast('Verstuurd!', 'success');
         }
 
-        async function removeLabel(id) {
-            if (confirm('Label verwijderen?')) {
+        async function removeLabel(id, silent = false) {
+            if (silent || confirm('Label verwijderen?')) {
                 await deleteLabel(id);
                 await getAllLabels();
                 renderLabels();
                 updateBadges();
+                showToast('Label verwijderd', 'success');
             }
         }
 
@@ -1708,6 +1869,72 @@
             const div = document.createElement('div');
             div.textContent = text;
             return div.innerHTML;
+        }
+
+        // =====================================================
+        // SWIPE TO DELETE
+        // =====================================================
+        function setupSwipeToDelete() {
+            document.querySelectorAll('.card-wrapper').forEach(wrapper => {
+                if (wrapper.dataset.swipeSetup) return;
+                wrapper.dataset.swipeSetup = 'true';
+                
+                const card = wrapper.querySelector('.card') || wrapper.querySelector('.label-card');
+                if (!card) return;
+                
+                let startX = 0;
+                let currentX = 0;
+                let isDragging = false;
+                
+                const onTouchStart = (e) => {
+                    startX = e.touches[0].clientX;
+                    isDragging = true;
+                    card.classList.add('swiping');
+                };
+                
+                const onTouchMove = (e) => {
+                    if (!isDragging) return;
+                    currentX = e.touches[0].clientX - startX;
+                    
+                    // Only allow swipe left
+                    if (currentX < 0) {
+                        card.style.transform = `translateX(${currentX}px)`;
+                    }
+                };
+                
+                const onTouchEnd = async () => {
+                    if (!isDragging) return;
+                    isDragging = false;
+                    card.classList.remove('swiping');
+                    
+                    const threshold = -100;
+                    
+                    if (currentX < threshold) {
+                        // Delete
+                        card.classList.add('deleting');
+                        
+                        const type = wrapper.dataset.type;
+                        const id = parseInt(wrapper.dataset.id);
+                        
+                        setTimeout(async () => {
+                            if (type === 'task') {
+                                await removeTask(id, true);
+                            } else if (type === 'label') {
+                                await removeLabel(id, true);
+                            }
+                        }, 300);
+                    } else {
+                        // Snap back
+                        card.style.transform = '';
+                    }
+                    
+                    currentX = 0;
+                };
+                
+                card.addEventListener('touchstart', onTouchStart, { passive: true });
+                card.addEventListener('touchmove', onTouchMove, { passive: true });
+                card.addEventListener('touchend', onTouchEnd);
+            });
         }
 
         // =====================================================
