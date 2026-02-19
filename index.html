@@ -1477,37 +1477,110 @@
             }
         }
 
-        function decodeBase64UTF8(base64String) {
-            // Convert base64url to standard base64
-            const base64 = base64String.replace(/-/g, '+').replace(/_/g, '/');
+        function decodeBase64WithEncoding(base64String, charset = 'utf-8') {
+            try {
+                // Convert base64url to standard base64
+                const base64 = base64String.replace(/-/g, '+').replace(/_/g, '/');
+                
+                // Decode base64 to binary string
+                const binaryString = atob(base64);
+                
+                // Convert binary string to byte array
+                const bytes = new Uint8Array(binaryString.length);
+                for (let i = 0; i < binaryString.length; i++) {
+                    bytes[i] = binaryString.charCodeAt(i);
+                }
+                
+                // Try decoding with specified charset, fallback to others
+                const charsets = [charset, 'utf-8', 'iso-8859-1', 'windows-1252', 'iso-8859-2'];
+                
+                for (const cs of charsets) {
+                    try {
+                        const decoder = new TextDecoder(cs, { fatal: true });
+                        const result = decoder.decode(bytes);
+                        // Check if result looks valid (no replacement characters)
+                        if (!result.includes('�')) {
+                            return result;
+                        }
+                    } catch (e) {
+                        continue;
+                    }
+                }
+                
+                // Last resort: non-fatal UTF-8
+                const decoder = new TextDecoder('utf-8', { fatal: false });
+                return decoder.decode(bytes);
+            } catch (error) {
+                console.error('Decode error:', error);
+                return base64String;
+            }
+        }
+
+        function getCharsetFromPart(part) {
+            // Extract charset from Content-Type header
+            const contentType = part.mimeType || '';
+            const headers = part.headers || [];
             
-            // Decode base64 to binary string
-            const binaryString = atob(base64);
-            
-            // Convert binary string to UTF-8
-            const bytes = new Uint8Array(binaryString.length);
-            for (let i = 0; i < binaryString.length; i++) {
-                bytes[i] = binaryString.charCodeAt(i);
+            for (const header of headers) {
+                if (header.name?.toLowerCase() === 'content-type') {
+                    const match = header.value?.match(/charset=["']?([^"';\s]+)/i);
+                    if (match) return match[1].toLowerCase();
+                }
             }
             
-            // Decode as UTF-8
-            const decoder = new TextDecoder('utf-8');
-            return decoder.decode(bytes);
+            return 'utf-8';
+        }
+
+        function decodeMimeHeader(str) {
+            // Decode MIME encoded-word syntax: =?charset?encoding?text?=
+            // Example: =?UTF-8?B?SGVsbG8=?= or =?ISO-8859-1?Q?H=E9llo?=
+            if (!str) return str;
+            
+            return str.replace(/=\?([^?]+)\?([BQ])\?([^?]*)\?=/gi, (match, charset, encoding, text) => {
+                try {
+                    if (encoding.toUpperCase() === 'B') {
+                        // Base64 encoding
+                        return decodeBase64WithEncoding(text, charset.toLowerCase());
+                    } else if (encoding.toUpperCase() === 'Q') {
+                        // Quoted-printable encoding
+                        const decoded = text
+                            .replace(/_/g, ' ')
+                            .replace(/=([0-9A-F]{2})/gi, (m, hex) => String.fromCharCode(parseInt(hex, 16)));
+                        
+                        // Convert to proper charset
+                        const bytes = new Uint8Array([...decoded].map(c => c.charCodeAt(0)));
+                        const decoder = new TextDecoder(charset.toLowerCase(), { fatal: false });
+                        return decoder.decode(bytes);
+                    }
+                } catch (e) {
+                    console.error('MIME decode error:', e);
+                }
+                return match;
+            });
         }
 
         async function processEmail(gmailMessage) {
             try {
                 const headers = gmailMessage.payload.headers;
-                const subject = headers.find(h => h.name === 'Subject')?.value || '';
-                const from = headers.find(h => h.name === 'From')?.value || '';
+                let subject = headers.find(h => h.name === 'Subject')?.value || '';
+                let from = headers.find(h => h.name === 'From')?.value || '';
+                
+                // Decode MIME encoded headers
+                subject = decodeMimeHeader(subject);
+                from = decodeMimeHeader(from);
 
                 let body = '';
                 const payload = gmailMessage.payload;
+                
                 if (payload.body?.data) {
-                    body = decodeBase64UTF8(payload.body.data);
+                    const charset = getCharsetFromPart(payload);
+                    body = decodeBase64WithEncoding(payload.body.data, charset);
                 } else if (payload.parts) {
                     const textPart = payload.parts.find(p => p.mimeType === 'text/plain');
-                    if (textPart?.body?.data) body = decodeBase64UTF8(textPart.body.data);
+                    if (textPart?.body?.data) {
+                        const charset = getCharsetFromPart(textPart);
+                        body = decodeBase64WithEncoding(textPart.body.data, charset);
+                    }
                 }
 
                 if (subject.includes('Please ship')) {
