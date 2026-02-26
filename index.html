@@ -669,6 +669,10 @@
         // =====================================================
         function renderPhotoTasks() {
             const container = document.getElementById('photoList');
+
+            const expandedIds = new Set();
+            container.querySelectorAll('.card.expanded').forEach(c => expandedIds.add(parseInt(c.dataset.id)));
+
             const photoTasks = tasks.filter(t => t.type === 'photo').sort((a, b) => {
                 if (a.completed !== b.completed) return a.completed ? 1 : -1;
                 return new Date(b.date) - new Date(a.date);
@@ -689,7 +693,7 @@
                 return `
                     <div class="card-wrapper" data-type="task" data-id="${task.id}">
                         <div class="card-delete-bg"></div>
-                        <div class="card ${task.completed ? 'completed' : ''}" data-id="${task.id}">
+                        <div class="card ${task.completed ? 'completed' : ''} ${expandedIds.has(task.id) ? 'expanded' : ''}" data-id="${task.id}">
                             <div class="card-header" onclick="toggleCard('photo', ${task.id})">
                                 <div class="card-top">
                                     <span class="card-title">${task.title || 'Geen titel'}</span>
