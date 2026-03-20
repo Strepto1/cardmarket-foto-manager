@@ -1503,9 +1503,12 @@
             syncBtn.classList.add('syncing');
 
             try {
+                const sevenDaysAgo = new Date();
+                sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+                const afterDate = `${sevenDaysAgo.getFullYear()}/${String(sevenDaysAgo.getMonth() + 1).padStart(2, '0')}/${String(sevenDaysAgo.getDate()).padStart(2, '0')}`;
                 const queries = [
-                    'from:noreply@cardmarket.com subject:"Shipment" after:2024/01/01',
-                    'from:cardmarket.com subject:"Cardmarket message from" after:2024/01/01'
+                    `from:noreply@cardmarket.com subject:"Shipment" after:${afterDate}`,
+                    `from:cardmarket.com subject:"Cardmarket message from" after:${afterDate}`
                 ];
 
                 let allMessages = [];
@@ -1657,7 +1660,9 @@
                 const headers = gmailMessage.payload.headers;
                 let subject = headers.find(h => h.name === 'Subject')?.value || '';
                 let from = headers.find(h => h.name === 'From')?.value || '';
-                
+                const dateHeader = headers.find(h => h.name === 'Date')?.value || '';
+                const emailDate = dateHeader ? new Date(dateHeader).toISOString() : new Date().toISOString();
+
                 // Decode MIME encoded headers
                 subject = decodeMimeHeader(subject);
                 from = decodeMimeHeader(from);
@@ -1677,11 +1682,11 @@
                 }
 
                 if (subject.includes('Please ship')) {
-                    return await processPaidEmail(gmailMessage.id, subject, body);
+                    return await processPaidEmail(gmailMessage.id, subject, body, emailDate);
                 } else if (subject.includes('SOLD')) {
                     return await processSoldEmail(gmailMessage.id, subject, body);
                 } else if (subject.includes('Cardmarket message from')) {
-                    return await processMessageEmail(gmailMessage.id, subject, body, from);
+                    return await processMessageEmail(gmailMessage.id, subject, body, from, emailDate);
                 }
 
                 return null;
@@ -1691,7 +1696,7 @@
             }
         }
 
-        async function processPaidEmail(messageId, subject, body) {
+        async function processPaidEmail(messageId, subject, body, emailDate) {
             const buyerMatch = subject.match(/for (.+?):/);
             const buyer = buyerMatch ? buyerMatch[1].trim() : 'Onbekend';
             const shipmentMatch = subject.match(/Shipment (\d+)/);
@@ -1707,7 +1712,7 @@
             const totalMatch = body.match(/Total sale price:\s*([\d,\.]+)\s*EUR/i);
             const totalPrice = totalMatch ? parseFloat(totalMatch[1].replace(',', '.')) : 0;
 
-            await saveLabel({ id: parseInt(shipmentId), buyer, address, items, totalPrice, gmailMessageId: messageId, date: new Date().toISOString() });
+            await saveLabel({ id: parseInt(shipmentId), buyer, address, items, totalPrice, gmailMessageId: messageId, date: emailDate || new Date().toISOString() });
 
             const updatedCount = await updateInventoryFromItems(items);
             return { type: 'label', inventoryUpdated: updatedCount };
@@ -1719,7 +1724,7 @@
             return { type: 'sold', inventoryUpdated: updatedCount };
         }
 
-        async function processMessageEmail(messageId, subject, body, from) {
+        async function processMessageEmail(messageId, subject, body, from, emailDate) {
             const usernameMatch = subject.match(/Cardmarket message from (.+)/i);
             const username = usernameMatch ? usernameMatch[1].trim() : 'Unknown';
             const buyerMessage = extractBuyerMessage(body);
@@ -1745,7 +1750,7 @@
                 username,
                 email: from.match(/([^\s<]+@cardmarket\.com)/)?.[1] || from,
                 description: buyerMessage.substring(0, 500),
-                date: new Date().toISOString(),
+                date: emailDate || new Date().toISOString(),
                 completed: false,
                 photos: [],
                 inventoryId,
