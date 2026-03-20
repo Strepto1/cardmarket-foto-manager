@@ -505,11 +505,12 @@
         const GOOGLE_CLIENT_ID = '798382176554-foctga75o3ru9pjnfqv6jtjr0t7kig6v.apps.googleusercontent.com';
         const GMAIL_SCOPES = 'https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.send';
         const DB_NAME = 'CardmarketHubDB';
-        const DB_VERSION = 3;
+        const DB_VERSION = 4;
         const STORE_TASKS = 'tasks';
         const STORE_INVENTORY = 'inventory';
         const STORE_LABELS = 'labels';
         const STORE_CONFIG = 'config';
+        const STORE_DISMISSED = 'dismissedEmails';
 
         // =====================================================
         // STATE
@@ -563,6 +564,7 @@
                     if (!database.objectStoreNames.contains(STORE_INVENTORY)) database.createObjectStore(STORE_INVENTORY, { keyPath: 'id' });
                     if (!database.objectStoreNames.contains(STORE_LABELS)) database.createObjectStore(STORE_LABELS, { keyPath: 'id' });
                     if (!database.objectStoreNames.contains(STORE_CONFIG)) database.createObjectStore(STORE_CONFIG, { keyPath: 'key' });
+                    if (!database.objectStoreNames.contains(STORE_DISMISSED)) database.createObjectStore(STORE_DISMISSED, { keyPath: 'id' });
                 };
             });
         }
@@ -580,6 +582,8 @@
         async function saveTask(task) { return dbOp(STORE_TASKS, 'readwrite', s => s.put(task)); }
         async function deleteTask(id) { return dbOp(STORE_TASKS, 'readwrite', s => s.delete(id)); }
         async function getAllTasks() { tasks = await dbOp(STORE_TASKS, 'readonly', s => s.getAll()); return tasks; }
+        async function dismissGmailId(gmailId) { return dbOp(STORE_DISMISSED, 'readwrite', s => s.put({ id: gmailId })); }
+        async function getAllDismissed() { return dbOp(STORE_DISMISSED, 'readonly', s => s.getAll()); }
         
         async function saveInvItem(item) { return dbOp(STORE_INVENTORY, 'readwrite', s => s.put(item)); }
         async function deleteInvItem(id) { return dbOp(STORE_INVENTORY, 'readwrite', s => s.delete(id)); }
@@ -943,6 +947,8 @@
 
         async function removeTask(id, silent = false) {
             if (silent || confirm('Taak verwijderen?')) {
+                const task = tasks.find(t => t.id === id);
+                if (task?.gmailMessageId) await dismissGmailId(task.gmailMessageId);
                 await deleteTask(id);
                 await getAllTasks();
                 renderPhotoTasks();
@@ -1527,10 +1533,13 @@
 
                 let newPhotos = 0, newQuestions = 0, newLabels = 0, updatedInv = 0;
 
+                const dismissedList = await getAllDismissed();
+                const dismissedIds = new Set(dismissedList.map(d => d.id));
+
                 for (const msg of allMessages) {
                     const existsTask = tasks.find(t => t.gmailMessageId === msg.id);
                     const existsLabel = labels.find(l => l.gmailMessageId === msg.id);
-                    if (existsTask || existsLabel) continue;
+                    if (existsTask || existsLabel || dismissedIds.has(msg.id)) continue;
 
                     const msgUrl = `https://www.googleapis.com/gmail/v1/users/me/messages/${msg.id}?format=full`;
                     const msgResponse = await fetch(msgUrl, { headers: { 'Authorization': `Bearer ${googleAccessToken}` } });
@@ -1550,7 +1559,34 @@
                 await getAllTasks();
                 await getAllLabels();
                 await getAllInventory();
-                
+
+                // One-time migration: fix dates on existing tasks using real Gmail Date headers
+                const datesMigrated = await getConfig('datesMigrated');
+                if (!datesMigrated) {
+                    const tasksToMigrate = tasks.filter(t => t.gmailMessageId);
+                    let migratedCount = 0;
+                    for (const task of tasksToMigrate) {
+                        try {
+                            const msgUrl = `https://www.googleapis.com/gmail/v1/users/me/messages/${task.gmailMessageId}?format=metadata&metadataHeaders=Date`;
+                            const msgResp = await fetch(msgUrl, { headers: { 'Authorization': `Bearer ${googleAccessToken}` } });
+                            if (!msgResp.ok) continue;
+                            const msgData = await msgResp.json();
+                            const dateHeader = msgData.payload?.headers?.find(h => h.name === 'Date')?.value;
+                            if (dateHeader) {
+                                const parsed = new Date(dateHeader);
+                                if (!isNaN(parsed)) {
+                                    task.date = parsed.toISOString();
+                                    await saveTask(task);
+                                    migratedCount++;
+                                }
+                            }
+                        } catch (e) { /* skip */ }
+                    }
+                    await setConfig('datesMigrated', true);
+                    if (migratedCount > 0) showToast(`${migratedCount} datums bijgewerkt`, 'info');
+                    await getAllTasks();
+                }
+
                 renderPhotoTasks();
                 renderQuestionTasks();
                 renderLabels();
